@@ -1,0 +1,36 @@
+[project]
+name = "TimeTracker"
+version = "0.1.0"
+description = "A command line utility to track time spent on tasks"
+authors = [
+    {name = "Jonas Greitemann", email = "jgreitemann@gmail.com"},
+]
+dependencies = [
+    "click>=8.1.7",
+    "dataclasses-json>=0.6.4",
+]
+requires-python = ">=3.12"
+readme = "README.md"
+license = {text = "MIT"}
+
+[build-system]
+requires = ["pdm-backend"]
+build-backend = "pdm.backend"
+
+
+[tool.pdm]
+distribution = true
+
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"
+typeCheckingMode = "strict"
+# Partially unknown types should not be flagged, only missing ones
+reportUnknownMemberType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownVariableType = "none"
+reportUnknownParameterType = "none"
+# The following lints are disabled because they are covered by ruff
+reportUnusedVariable = "none"
+reportUnusedImport = "none"
