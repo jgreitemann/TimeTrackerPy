@@ -20,11 +20,11 @@ def status():
 @click.argument("activity")
 def start(activity: str):
     with transact(Path("~/Desktop/worklog.json").expanduser()) as worklog:
-        worklog.activity(activity).start()
+        worklog.update_activity(activity, lambda a: a.started())
 
 
 @cli.command()
 @click.argument("activity")
-def finish(activity: str):
+def stop(activity: str):
     with transact(Path("~/Desktop/worklog.json").expanduser()) as worklog:
-        worklog.activity(activity).finish()
+        worklog.update_activity(activity, lambda a: a.stopped())

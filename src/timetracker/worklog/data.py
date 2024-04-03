@@ -1,12 +1,28 @@
-from dataclasses import dataclass
-from dataclasses_json import DataClassJsonMixin
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Optional, Self
+from typing import (
+    Callable,
+    Mapping,
+    Optional,
+    Self,
+    Sequence,
+)
+
+from dataclasses_json import DataClassJsonMixin, config
+
+from timetracker.worklog.error import (
+    ActivityAlreadyStarted,
+    ActivityAlreadyStopped,
+    ActivityNeverStarted,
+    ActivityStateError,
+    ActivityUpdateError,
+)
+from timetracker.worklog.coder import mapping_coder, seq_coder
 
 
-@dataclass
-class Interval(DataClassJsonMixin):
+@dataclass(frozen=True)
+class Stint(DataClassJsonMixin):
     start: datetime
     finish: Optional[datetime]
 
@@ -14,50 +30,52 @@ class Interval(DataClassJsonMixin):
         finish_format = self.finish.isoformat() if self.finish else "now"
         return f"{self.start.isoformat()} - {finish_format}"
 
+    def is_finished(self) -> bool:
+        return self.finish is not None
 
-class ActivityStateError(Exception):
-    def __init__(self, conflicting_interval: Optional[Interval]):
-        self.conflicting_interval = conflicting_interval
-        if conflicting_interval is None:
-            super().__init__("failed to stop activity which was never started")
-        elif conflicting_interval.finish is None:
-            super().__init__(
-                f"failed to start activity which was already started at {conflicting_interval.start.isoformat()}"
-            )
+    def finished(self) -> Self:
+        if self.finish is None:
+            return replace(self, finish=datetime.now())
         else:
-            super().__init__(
-                f"failed to stop activity which was already stopped at {conflicting_interval.finish.isoformat()}"
-            )
+            raise ActivityAlreadyStopped(self.finish)
 
 
-@dataclass
+@dataclass(frozen=True)
 class Activity(DataClassJsonMixin):
-    logged_work: List[Interval]
+    stints: Sequence[Stint] = field(metadata=config(**seq_coder(Stint)))
 
     def __str__(self) -> str:
-        return "\n".join(map(str, self.logged_work))
+        return "\n".join(map(str, self.stints))
 
-    def current(self) -> Optional[Interval]:
-        if len(self.logged_work) > 0:
-            return self.logged_work[-1]
+    def current(self) -> Optional[Stint]:
+        if len(self.stints) > 0:
+            return self.stints[-1]
         else:
             return None
 
-    def start(self):
-        if (c := self.current()) and c.finish is None:
-            raise ActivityStateError(c)
-        self.logged_work.append(Interval(start=datetime.now(), finish=None))
+    def started(self) -> Self:
+        if (c := self.current()) and not c.is_finished():
+            raise ActivityAlreadyStarted(c.start)
+        return replace(
+            self,
+            stints=[
+                *self.stints,
+                Stint(start=datetime.now(), finish=None),
+            ],
+        )
 
-    def finish(self):
-        if (c := self.current()) is None or c.finish is not None:
-            raise ActivityStateError(c)
+    def stopped(self) -> Self:
+        if (c := self.current()) is None:
+            raise ActivityNeverStarted()
         else:
-            c.finish = datetime.now()
+            return replace(self, stints=[*self.stints[:-1], c.finished()])
 
 
 @dataclass
 class Worklog(DataClassJsonMixin):
-    activities: Dict[str, Activity]
+    activities: Mapping[str, Activity] = field(
+        metadata=config(**mapping_coder(Activity))
+    )
 
     def __str__(self) -> str:
         return "\n\n".join(
@@ -74,5 +92,8 @@ class Worklog(DataClassJsonMixin):
         with open(path, "w") as file:
             file.write(self.to_json())
 
-    def activity(self, name: str) -> Activity:
-        return self.activities.get(name, Activity([]))
+    def update_activity(self, name: str, func: Callable[[Activity], Activity]):
+        try:
+            self.activities = {**self.activities, name: func(self.activities[name])}
+        except ActivityStateError as e:
+            raise ActivityUpdateError(name) from e
