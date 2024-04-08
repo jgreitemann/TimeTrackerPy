@@ -23,26 +23,21 @@ def _():
 
 @test("Finishing an unfinished stint produces a finished one")
 def _():
-    unfinished_stint = Stint(begin=constants.BREAKFAST_TIME)
-    finished_stint = unfinished_stint.finished()
+    assert not constants.UNFINISHED_STINT.is_finished()
+    finished_stint = constants.UNFINISHED_STINT.finished()
     assert finished_stint.is_finished()
-    assert finished_stint is not unfinished_stint
-    assert not unfinished_stint.is_finished()
+    assert finished_stint is not constants.UNFINISHED_STINT
 
 
 @test("Finishing a finished stint raises an exception and leaves the stint unchanged")
 def _():
-    finished_stint = Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)
+    assert constants.FINISHED_STINT.is_finished()
     with raises(ActivityAlreadyStopped) as ex:
-        finished_stint.finished()
-    assert ex.raised.time_last_stopped == constants.LUNCH_TIME
-    assert finished_stint.end == constants.LUNCH_TIME
+        constants.FINISHED_STINT.finished()
+    assert ex.raised.time_last_stopped == constants.FINISHED_STINT.end
 
 
-for stint in [
-    Stint(begin=constants.BREAKFAST_TIME),
-    Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
-]:
+for stint in [constants.UNFINISHED_STINT, constants.FINISHED_STINT]:
 
     @test("Stints can be serialized to and deserialized from JSON losslessly ({stint})")
     def _(stint: Stint = stint):
@@ -73,19 +68,12 @@ def _():
 
 @test("Restarting an activity produces one with a new unfinished stint")
 def _():
-    stopped_activity = Activity(
-        stints=[Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)]
-    )
+    stopped_activity = Activity(stints=[constants.FINISHED_STINT])
     restarted_activity = stopped_activity.started()
     assert restarted_activity.is_running()
 
     match restarted_activity:
-        case Activity(
-            stints=[
-                Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
-                Stint(end=None),
-            ]
-        ):
+        case Activity(stints=[constants.FINISHED_STINT, Stint(end=None)]):
             pass
         case _ as value:
             assert False, f"{repr(value)} does not match the pattern"
@@ -93,15 +81,13 @@ def _():
 
 @test("Starting an activity which is running raises an exception")
 def _():
-    running_activity = Activity().started()
+    assert constants.RUNNING_ACTIVITY.is_running()
 
     with raises(ActivityAlreadyStarted) as ex:
-        running_activity.started()
+        constants.RUNNING_ACTIVITY.started()
 
-    [running_stint] = running_activity.stints
-    assert not running_stint.is_finished()
-
-    assert ex.raised.time_last_started == running_stint.begin
+    assert constants.RUNNING_ACTIVITY.is_running()
+    assert ex.raised.time_last_started == constants.RUNNING_ACTIVITY.stints[-1].begin
 
 
 @test("Stopping a running activity produces one with a finished stint")
@@ -127,7 +113,5 @@ def _():
         Activity().stopped()
 
     with raises(ActivityAlreadyStopped) as ex:
-        Activity(
-            stints=[Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)]
-        ).stopped()
-    assert ex.raised.time_last_stopped == constants.LUNCH_TIME
+        constants.COMPLETED_ACTIVITY.stopped()
+    assert ex.raised.time_last_stopped == constants.COMPLETED_ACTIVITY.stints[-1].end
