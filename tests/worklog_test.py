@@ -115,3 +115,14 @@ def _():
     with raises(ActivityAlreadyStopped) as ex:
         constants.COMPLETED_ACTIVITY.stopped()
     assert ex.raised.time_last_stopped == constants.COMPLETED_ACTIVITY.stints[-1].end
+
+
+for activity in [Activity(), constants.RUNNING_ACTIVITY, constants.COMPLETED_ACTIVITY]:
+
+    @test(
+        "Activities can be serialized to and deserialized from JSON losslessly ({activity})"
+    )
+    def _(activity: Activity = activity):
+        json_str = activity.to_json()
+        deserialized_activity = Activity.from_json(json_str)
+        assert deserialized_activity == activity
