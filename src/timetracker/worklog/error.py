@@ -13,7 +13,7 @@ class ActivityStateError(Exception):
 
 class ActivityAlreadyStarted(ActivityStateError):
     def __init__(self, time_last_started: datetime):
-        self.time_last_stopped = time_last_started
+        self.time_last_started = time_last_started
         super().__init__(
             f"cannot start the activity because it has already been started at {time_last_started.isoformat()}"
         )

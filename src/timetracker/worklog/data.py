@@ -42,7 +42,10 @@ class Stint(DataClassJsonMixin):
 
 @dataclass(frozen=True)
 class Activity(DataClassJsonMixin):
-    stints: Sequence[Stint] = field(metadata=config(**seq_coder(Stint)))
+    stints: Sequence[Stint] = field(
+        default_factory=lambda: [],
+        metadata=config(**seq_coder(Stint)),
+    )
 
     def __str__(self) -> str:
         return "\n".join(map(str, self.stints))
@@ -69,6 +72,9 @@ class Activity(DataClassJsonMixin):
             raise ActivityNeverStarted()
         else:
             return replace(self, stints=[*self.stints[:-1], c.finished()])
+
+    def is_running(self) -> bool:
+        return (c := self.current()) is not None and not c.is_finished()
 
 
 @dataclass
