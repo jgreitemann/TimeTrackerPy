@@ -11,19 +11,19 @@ from ward import raises, test
 from tests import constants
 
 
-@test("A stint with only a start time is unfinished")
+@test("A stint with only a begin time is unfinished")
 def _():
-    assert not Stint(start=constants.BREAKFAST_TIME).is_finished()
+    assert not Stint(begin=constants.BREAKFAST_TIME).is_finished()
 
 
-@test("A stint with both start and end time is finished")
+@test("A stint with both begin and end time is finished")
 def _():
-    assert Stint(start=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME).is_finished()
+    assert Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME).is_finished()
 
 
 @test("Finishing an unfinished stint produces a finished one")
 def _():
-    unfinished_stint = Stint(start=constants.BREAKFAST_TIME)
+    unfinished_stint = Stint(begin=constants.BREAKFAST_TIME)
     finished_stint = unfinished_stint.finished()
     assert finished_stint.is_finished()
     assert finished_stint is not unfinished_stint
@@ -32,7 +32,7 @@ def _():
 
 @test("Finishing a finished stint raises an exception and leaves the stint unchanged")
 def _():
-    finished_stint = Stint(start=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)
+    finished_stint = Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)
     with raises(ActivityAlreadyStopped) as ex:
         finished_stint.finished()
     assert ex.raised.time_last_stopped == constants.LUNCH_TIME
@@ -40,8 +40,8 @@ def _():
 
 
 for stint in [
-    Stint(start=constants.BREAKFAST_TIME),
-    Stint(start=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
+    Stint(begin=constants.BREAKFAST_TIME),
+    Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
 ]:
 
     @test("Stints can be serialized to and deserialized from JSON losslessly ({stint})")
@@ -74,7 +74,7 @@ def _():
 @test("Restarting an activity produces one with a new unfinished stint")
 def _():
     stopped_activity = Activity(
-        stints=[Stint(start=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)]
+        stints=[Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)]
     )
     restarted_activity = stopped_activity.started()
     assert restarted_activity.is_running()
@@ -82,7 +82,7 @@ def _():
     match restarted_activity:
         case Activity(
             stints=[
-                Stint(start=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
+                Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
                 Stint(end=None),
             ]
         ):
@@ -101,16 +101,16 @@ def _():
     [running_stint] = running_activity.stints
     assert not running_stint.is_finished()
 
-    assert ex.raised.time_last_started == running_stint.start
+    assert ex.raised.time_last_started == running_stint.begin
 
 
 @test("Stopping a running activity produces one with a finished stint")
 def _():
-    running_activity = Activity(stints=[Stint(start=constants.BREAKFAST_TIME)])
+    running_activity = Activity(stints=[Stint(begin=constants.BREAKFAST_TIME)])
     match running_activity.stopped():
         case Activity(
             stints=[
-                Stint(start=constants.BREAKFAST_TIME, end=datetime()),
+                Stint(begin=constants.BREAKFAST_TIME, end=datetime()),
             ]
         ):
             pass
@@ -128,6 +128,6 @@ def _():
 
     with raises(ActivityAlreadyStopped) as ex:
         Activity(
-            stints=[Stint(start=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)]
+            stints=[Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME)]
         ).stopped()
     assert ex.raised.time_last_stopped == constants.LUNCH_TIME

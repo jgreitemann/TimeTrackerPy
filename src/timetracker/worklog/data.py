@@ -23,12 +23,12 @@ from timetracker.worklog.coder import mapping_coder, seq_coder
 
 @dataclass(frozen=True)
 class Stint(DataClassJsonMixin):
-    start: datetime
+    begin: datetime
     end: Optional[datetime] = None
 
     def __str__(self) -> str:
         finish_format = self.end.isoformat() if self.end else "now"
-        return f"{self.start.isoformat()} - {finish_format}"
+        return f"{self.begin.isoformat()} - {finish_format}"
 
     def is_finished(self) -> bool:
         return self.end is not None
@@ -58,12 +58,12 @@ class Activity(DataClassJsonMixin):
 
     def started(self) -> Self:
         if (c := self.current()) and not c.is_finished():
-            raise ActivityAlreadyStarted(c.start)
+            raise ActivityAlreadyStarted(c.begin)
         return replace(
             self,
             stints=[
                 *self.stints,
-                Stint(start=datetime.now()),
+                Stint(begin=datetime.now()),
             ],
         )
 
