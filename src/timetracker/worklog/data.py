@@ -30,6 +30,10 @@ class Stint(DataClassJsonMixin):
         finish_format = self.end.isoformat() if self.end else "now"
         return f"{self.begin.isoformat()} - {finish_format}"
 
+    def __repr__(self) -> str:
+        finish_format = self.end.isoformat() if self.end else "None"
+        return f"Stint(begin={self.begin.isoformat()}, end={finish_format})"
+
     def is_finished(self) -> bool:
         return self.end is not None
 

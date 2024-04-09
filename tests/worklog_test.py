@@ -39,7 +39,9 @@ def _():
 
 for stint in [constants.UNFINISHED_STINT, constants.FINISHED_STINT]:
 
-    @test("Stints can be serialized to and deserialized from JSON losslessly ({stint})")
+    @test(
+        "Stints can be serialized to and deserialized from JSON losslessly ({stint!r})"
+    )
     def _(stint: Stint = stint):
         json_str = stint.to_json()
         deserialized_stint = Stint.from_json(json_str)
@@ -120,7 +122,7 @@ def _():
 for activity in [Activity(), constants.RUNNING_ACTIVITY, constants.COMPLETED_ACTIVITY]:
 
     @test(
-        "Activities can be serialized to and deserialized from JSON losslessly ({activity})"
+        "Activities can be serialized to and deserialized from JSON losslessly ({activity!r})"
     )
     def _(activity: Activity = activity):
         json_str = activity.to_json()
