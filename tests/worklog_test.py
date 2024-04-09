@@ -1,4 +1,5 @@
 from datetime import datetime
+from copy import deepcopy
 
 from timetracker.worklog.data import Activity, Stint, Worklog
 from timetracker.worklog.error import (
@@ -133,3 +134,34 @@ for activity in [Activity(), constants.RUNNING_ACTIVITY, constants.COMPLETED_ACT
 @test("Creating a new worklog starts out without any activities")
 def _():
     assert Worklog().activities == {}
+
+
+@test("Updating a hitherto unknown activity creates an empty activity")
+def _():
+    log = deepcopy(constants.MIXED_WORKLOG)
+
+    received = []
+    log.update_activity(
+        "secret", lambda a: (received.append(a), constants.ALL_NIGHTER_ACTIVITY)[1]
+    )
+    assert received == [Activity()]
+
+    assert log.activities == {
+        **constants.MIXED_WORKLOG.activities,
+        "secret": constants.ALL_NIGHTER_ACTIVITY,
+    }
+
+
+@test("Updating an existing activity replaces its value")
+def _():
+    log = deepcopy(constants.MIXED_WORKLOG)
+
+    received = []
+    log.update_activity(
+        "running", lambda a: (received.append(a), constants.ALL_NIGHTER_ACTIVITY)[1]
+    )
+    assert received == [constants.RUNNING_ACTIVITY]
+    assert log.activities == {
+        **constants.MIXED_WORKLOG.activities,
+        "running": constants.ALL_NIGHTER_ACTIVITY,
+    }

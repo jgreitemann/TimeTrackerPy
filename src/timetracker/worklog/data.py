@@ -105,6 +105,9 @@ class Worklog(DataClassJsonMixin):
 
     def update_activity(self, name: str, func: Callable[[Activity], Activity]):
         try:
-            self.activities = {**self.activities, name: func(self.activities[name])}
+            self.activities = {
+                **self.activities,
+                name: func(self.activities.get(name, Activity())),
+            }
         except ActivityStateError as e:
             raise ActivityUpdateError(name) from e

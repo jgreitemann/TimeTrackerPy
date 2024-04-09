@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from timetracker.worklog.data import Activity, Stint
+from timetracker.worklog.data import Activity, Stint, Worklog
 
 
 BREAKFAST_TIME = datetime.fromisoformat("2024-02-29T08:45:21+0100")
@@ -23,4 +23,17 @@ COMPLETED_ACTIVITY = Activity(
         Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME),
         Stint(begin=COFFEE_TIME, end=DINNER_TIME),
     ]
+)
+
+ALL_NIGHTER_ACTIVITY = Activity(
+    stints=[
+        Stint(begin=DINNER_TIME),
+    ]
+)
+
+MIXED_WORKLOG = Worklog(
+    activities={
+        "completed": COMPLETED_ACTIVITY,
+        "running": RUNNING_ACTIVITY,
+    }
 )
