@@ -165,3 +165,14 @@ def _():
         **constants.MIXED_WORKLOG.activities,
         "running": constants.ALL_NIGHTER_ACTIVITY,
     }
+
+
+for worklog in [Worklog(), constants.MIXED_WORKLOG]:
+
+    @test(
+        "Worklogs can be serialized to and deserialized from JSON losslessly ({worklog!r})"
+    )
+    def _(worklog: Worklog = worklog):
+        json_str = worklog.to_json()
+        deserialized_worklog = Worklog.from_json(json_str)
+        assert deserialized_worklog == worklog
