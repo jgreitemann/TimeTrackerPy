@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from timetracker.worklog.data import Activity, Stint
+from timetracker.worklog.data import Activity, Stint, Worklog
 from timetracker.worklog.error import (
     ActivityAlreadyStarted,
     ActivityAlreadyStopped,
@@ -128,3 +128,8 @@ for activity in [Activity(), constants.RUNNING_ACTIVITY, constants.COMPLETED_ACT
         json_str = activity.to_json()
         deserialized_activity = Activity.from_json(json_str)
         assert deserialized_activity == activity
+
+
+@test("Creating a new worklog starts out without any activities")
+def _():
+    assert Worklog().activities == {}

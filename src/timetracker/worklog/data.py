@@ -84,7 +84,8 @@ class Activity(DataClassJsonMixin):
 @dataclass
 class Worklog(DataClassJsonMixin):
     activities: Mapping[str, Activity] = field(
-        metadata=config(**mapping_coder(Activity))
+        default_factory=lambda: {},
+        metadata=config(**mapping_coder(Activity)),
     )
 
     def __str__(self) -> str:
