@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:d387684a2e676475ba83772d01ada3f6fe07fcd4c08ef4f5d7c7e223e6f1ba3e"
+content_hash = "sha256:87ef1d7595f0d6c4b379345714382b1b5ccf50f484e47dfb79351eff63f14d2f"
 
 [[package]]
 name = "click"
@@ -201,6 +201,17 @@ groups = ["dev"]
 files = [
     {file = "pprintpp-0.4.0-py2.py3-none-any.whl", hash = "sha256:b6b4dcdd0c0c0d75e4d7b2f21a9e933e5b2ce62b26e1a54537f9651ae5a5c01d"},
     {file = "pprintpp-0.4.0.tar.gz", hash = "sha256:ea826108e2c7f49dc6d66c752973c3fc9749142a798d6b254e1e301cfdbc6403"},
+]
+
+[[package]]
+name = "pyfakefs"
+version = "5.4.0"
+requires_python = ">=3.7"
+summary = "pyfakefs implements a fake file system that mocks the Python file system modules."
+groups = ["dev"]
+files = [
+    {file = "pyfakefs-5.4.0-py3-none-any.whl", hash = "sha256:96e52554621a3af7b8171f8660debb65781bcd0cb0bdddea8b12e1b7871c33f3"},
+    {file = "pyfakefs-5.4.0.tar.gz", hash = "sha256:969096d84b5b986f4f84399d03f4900381a3880d03adcdbd609566a4baf39bf9"},
 ]
 
 [[package]]

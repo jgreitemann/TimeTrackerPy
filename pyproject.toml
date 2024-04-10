@@ -34,6 +34,7 @@ test = "ward"
 [tool.pdm.dev-dependencies]
 dev = [
     "ward>=0.68.0b0",
+    "pyfakefs>=5.4.0",
 ]
 
 

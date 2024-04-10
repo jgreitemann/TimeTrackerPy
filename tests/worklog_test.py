@@ -1,15 +1,19 @@
-from datetime import datetime
 from copy import deepcopy
+from datetime import datetime
+from pathlib import Path
 
+from pyfakefs.fake_filesystem import FakeFilesystem
 from timetracker.worklog.data import Activity, Stint, Worklog
 from timetracker.worklog.error import (
     ActivityAlreadyStarted,
     ActivityAlreadyStopped,
     ActivityNeverStarted,
 )
-from ward import raises, test
+from timetracker.worklog.transaction import transact
+from ward import raises, test, using
 
 from tests import constants
+from tests.fixtures import fake_fs
 
 
 @test("A stint with only a begin time is unfinished")
@@ -176,3 +180,15 @@ for worklog in [Worklog(), constants.MIXED_WORKLOG]:
         json_str = worklog.to_json()
         deserialized_worklog = Worklog.from_json(json_str)
         assert deserialized_worklog == worklog
+
+
+@test("Existing worklog JSON file is read when entering the transaction context")
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        "/home/gal/.config/worklog.json",
+        contents=constants.MIXED_WORKLOG.to_json(),
+    )
+
+    with transact(Path("/home/gal/.config/worklog.json")) as worklog:
+        assert worklog == constants.MIXED_WORKLOG
