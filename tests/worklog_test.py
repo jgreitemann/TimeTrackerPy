@@ -1,6 +1,7 @@
 from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
+from time import sleep
 
 from pyfakefs.fake_filesystem import FakeFilesystem
 from timetracker.worklog.data import Activity, Stint, Worklog
@@ -293,3 +294,23 @@ def _(fs: FakeFilesystem):
         worklog.update_activity("running", lambda a: a.stopped())
 
     assert Worklog.from_json(WORKLOG_JSON_PATH.read_text()) == worklog
+
+
+@test(
+    "Given an existing worklog JSON file, "
+    "when exiting the transaction context without modifying the worklog, "
+    "then the JSON file will not be updated"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents=constants.MIXED_WORKLOG.to_json(),
+    )
+    original_mtime = WORKLOG_JSON_PATH.stat().st_mtime
+    sleep(0.001)  # sleep 1 ms to ensure mtime is different if file changed
+
+    with transact(WORKLOG_JSON_PATH):
+        pass
+
+    assert WORKLOG_JSON_PATH.stat().st_mtime == original_mtime
