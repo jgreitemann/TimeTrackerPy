@@ -39,7 +39,7 @@ class Stint(DataClassJsonMixin):
 
     def finished(self) -> Self:
         if self.end is None:
-            return replace(self, end=datetime.now())
+            return replace(self, end=datetime.now().astimezone())
         else:
             raise ActivityAlreadyStopped(self.end)
 
@@ -67,7 +67,7 @@ class Activity(DataClassJsonMixin):
             self,
             stints=[
                 *self.stints,
-                Stint(begin=datetime.now()),
+                Stint(begin=datetime.now().astimezone()),
             ],
         )
 
