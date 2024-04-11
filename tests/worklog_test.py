@@ -258,3 +258,38 @@ def _(fs: FakeFilesystem):
     with raises(PermissionError):
         with transact(WORKLOG_JSON_PATH):
             pass
+
+
+@test(
+    "Given a non-existing worklog JSON file, "
+    "when exiting the transaction context, "
+    "then the JSON file will be created"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_dir(WORKLOG_JSON_PATH.parent)
+
+    with transact(WORKLOG_JSON_PATH):
+        assert (
+            not WORKLOG_JSON_PATH.exists()
+        ), "JSON file should not yet exist before exiting the context"
+
+    assert WORKLOG_JSON_PATH.exists()
+
+
+@test(
+    "Given an existing worklog JSON file which is read-writable, "
+    "when exiting the transaction context after modifying the worklog, "
+    "then the JSON file will be updated"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents=constants.MIXED_WORKLOG.to_json(),
+    )
+
+    with transact(WORKLOG_JSON_PATH) as worklog:
+        worklog.update_activity("running", lambda a: a.stopped())
+
+    assert Worklog.from_json(WORKLOG_JSON_PATH.read_text()) == worklog
