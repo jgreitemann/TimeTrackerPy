@@ -15,6 +15,8 @@ from ward import raises, test, using
 from tests import constants
 from tests.fixtures import fake_fs
 
+WORKLOG_JSON_PATH = Path("/home/gal/.config/worklog.json")
+
 
 @test("A stint with only a begin time is unfinished")
 def _():
@@ -34,7 +36,9 @@ def _():
     assert finished_stint is not constants.UNFINISHED_STINT
 
 
-@test("Finishing a finished stint raises an exception and leaves the stint unchanged")
+@test(
+    "Finishing a finished stint raises `ActivityAlreadyStopped` and leaves the stint unchanged"
+)
 def _():
     assert constants.FINISHED_STINT.is_finished()
     with raises(ActivityAlreadyStopped) as ex:
@@ -86,7 +90,7 @@ def _():
             assert False, f"{repr(value)} does not match the pattern"
 
 
-@test("Starting an activity which is running raises an exception")
+@test("Starting an activity which is running raises `ActivityAlreadyStarted`")
 def _():
     assert constants.RUNNING_ACTIVITY.is_running()
 
@@ -182,13 +186,75 @@ for worklog in [Worklog(), constants.MIXED_WORKLOG]:
         assert deserialized_worklog == worklog
 
 
-@test("Existing worklog JSON file is read when entering the transaction context")
+@test(
+    "Given a non-existing worklog JSON file, "
+    "when entering the transaction context, "
+    "then an empty worklog is created"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_dir(WORKLOG_JSON_PATH.parent)
+
+    with transact(WORKLOG_JSON_PATH) as worklog:
+        assert worklog == Worklog()
+
+
+@test(
+    "Given that the worklog JSON file is located in a directory that is not readable, "
+    "when entering the transaction context, "
+    "then `PermissionError` is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_dir(WORKLOG_JSON_PATH.parent)
+    WORKLOG_JSON_PATH.parent.chmod(0o277)
+
+    with raises(PermissionError):
+        with transact(WORKLOG_JSON_PATH):
+            pass
+
+
+@test(
+    "Given that the directory which would hold the worklog JSON file does not exist, "
+    "when entering the transaction contxt, "
+    "then `FileNotFoundError` is raised"
+)
+@using(_=fake_fs)
+def _(_: FakeFilesystem):
+    with raises(FileNotFoundError):
+        with transact(WORKLOG_JSON_PATH):
+            pass
+
+
+@test(
+    "Given an existing worklog JSON file which is readable, "
+    "when entering the transaction context, "
+    "then the worklog is read"
+)
 @using(fs=fake_fs)
 def _(fs: FakeFilesystem):
     fs.create_file(
-        "/home/gal/.config/worklog.json",
+        WORKLOG_JSON_PATH,
         contents=constants.MIXED_WORKLOG.to_json(),
     )
 
-    with transact(Path("/home/gal/.config/worklog.json")) as worklog:
+    with transact(WORKLOG_JSON_PATH) as worklog:
         assert worklog == constants.MIXED_WORKLOG
+
+
+@test(
+    "Given an existing worklog JSON file which isn't readable, "
+    "when entering the transaction context, "
+    "then `PermissionError` is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents=constants.MIXED_WORKLOG.to_json(),
+    )
+    WORKLOG_JSON_PATH.chmod(0o366)
+
+    with raises(PermissionError):
+        with transact(WORKLOG_JSON_PATH):
+            pass
