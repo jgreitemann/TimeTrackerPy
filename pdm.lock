@@ -5,7 +5,7 @@
 groups = ["default", "dev"]
 strategy = ["cross_platform", "inherit_metadata"]
 lock_version = "4.4.1"
-content_hash = "sha256:87ef1d7595f0d6c4b379345714382b1b5ccf50f484e47dfb79351eff63f14d2f"
+content_hash = "sha256:9abe2cbefda74dd696027df929d0a27ec8b88d29285595e54f9b9b7a45b5c390"
 
 [[package]]
 name = "click"
@@ -48,6 +48,19 @@ dependencies = [
 files = [
     {file = "click_default_group-1.2.4-py2.py3-none-any.whl", hash = "sha256:9b60486923720e7fc61731bdb32b617039aba820e22e1c88766b1125592eaa5f"},
     {file = "click_default_group-1.2.4.tar.gz", hash = "sha256:eb3f3c99ec0d456ca6cd2a7f08f7d4e91771bef51b01bdd9580cc6450fe1251e"},
+]
+
+[[package]]
+name = "click-help-colors"
+version = "0.9.4"
+summary = "Colorization of help messages in Click"
+groups = ["default"]
+dependencies = [
+    "click<9,>=7.0",
+]
+files = [
+    {file = "click-help-colors-0.9.4.tar.gz", hash = "sha256:f4cabe52cf550299b8888f4f2ee4c5f359ac27e33bcfe4d61db47785a5cc936c"},
+    {file = "click_help_colors-0.9.4-py3-none-any.whl", hash = "sha256:b33c5803eeaeb084393b1ab5899dc5476c7196b87a18713045afe76f840b42db"},
 ]
 
 [[package]]

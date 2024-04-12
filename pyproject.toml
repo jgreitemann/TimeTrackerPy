@@ -8,6 +8,7 @@ authors = [
 dependencies = [
     "click>=8.1.7",
     "dataclasses-json>=0.6.4",
+    "click-help-colors>=0.9.4",
 ]
 requires-python = ">=3.12"
 readme = "README.md"
