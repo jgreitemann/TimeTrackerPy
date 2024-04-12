@@ -15,7 +15,7 @@ license = {text = "MIT"}
 
 
 [project.scripts]
-track = "timetracker.cli:cli"
+track = "timetracker.cli:cli_with_error_reporting"
 
 
 [build-system]

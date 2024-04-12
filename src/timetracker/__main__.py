@@ -1,5 +1,5 @@
-from timetracker.cli import cli
+from timetracker.cli import cli_with_error_reporting
 
 
 if __name__ == "__main__":
-    cli()
+    cli_with_error_reporting()
