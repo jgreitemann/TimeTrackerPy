@@ -279,6 +279,24 @@ def _(fs: FakeFilesystem):
 
 
 @test(
+    "Given that the non-existing worklog JSON file would be located in a read-only directory, "
+    "when exiting the transaction context, "
+    "then `PermissionError` is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_dir(WORKLOG_JSON_PATH.parent)
+    WORKLOG_JSON_PATH.parent.chmod(0o555)
+
+    context_entered = False
+    with raises(PermissionError):
+        with transact(WORKLOG_JSON_PATH):
+            context_entered = True
+
+    assert context_entered
+
+
+@test(
     "Given an existing worklog JSON file which is read-writable, "
     "when exiting the transaction context after modifying the worklog, "
     "then the JSON file will be updated"
@@ -294,6 +312,29 @@ def _(fs: FakeFilesystem):
         worklog.update_activity("running", lambda a: a.stopped())
 
     assert Worklog.from_json(WORKLOG_JSON_PATH.read_text()) == worklog
+
+
+@test(
+    "Given an existing worklog JSON file which is read-only, "
+    "when exiting the transaction context after modifying the worklog, "
+    "then `PermissionError` is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents=constants.MIXED_WORKLOG.to_json(),
+    )
+    WORKLOG_JSON_PATH.chmod(0o444)
+
+    worklog = None
+    with raises(PermissionError):
+        with transact(WORKLOG_JSON_PATH) as worklog:
+            worklog.update_activity("running", lambda a: a.stopped())
+
+    assert (
+        worklog != constants.MIXED_WORKLOG
+    ), "worklog should be modified, as exception should only be raised upon exiting the context"
 
 
 @test(
@@ -314,3 +355,20 @@ def _(fs: FakeFilesystem):
         pass
 
     assert WORKLOG_JSON_PATH.stat().st_mtime == original_mtime
+
+
+@test(
+    "Given an existing worklog JSON file which is read-only, "
+    "when exiting the transaction context without modifying the worklog, "
+    "then no exception is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents=constants.MIXED_WORKLOG.to_json(),
+    )
+    WORKLOG_JSON_PATH.chmod(0o444)
+
+    with transact(WORKLOG_JSON_PATH):
+        pass
