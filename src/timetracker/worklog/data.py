@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field, replace
 from datetime import datetime
+from io import IOBase
 from pathlib import Path
 from typing import (
     Callable,
@@ -95,13 +96,11 @@ class Worklog(DataClassJsonMixin):
         )
 
     @classmethod
-    def from_file(cls, path: Path) -> Self:
-        with open(path, "r") as file:
-            return cls.from_json(file.read())
+    def from_stream(cls, input_stream: IOBase) -> Self:
+        return cls.from_json(input_stream.read())
 
-    def write_to_file(self, path: Path):
-        with open(path, "w") as file:
-            file.write(self.to_json())
+    def write_to_stream(self, output_stream: IOBase):
+        output_stream.write(self.to_json())
 
     def update_activity(self, name: str, func: Callable[[Activity], Activity]):
         try:

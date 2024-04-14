@@ -4,7 +4,7 @@ from pathlib import Path
 import click
 from click_help_colors import HelpColorsGroup
 
-from timetracker.worklog.transaction import transact
+from timetracker.worklog.io import read_from_file, transact
 
 ERROR = click.style("error:", fg="red", bold=True)
 CAUSED_BY = click.style("caused by:", bold=True)
@@ -34,8 +34,13 @@ def cli():
 @cli.command()
 def status():
     """Print a summary of the worklog by activity."""
-    with transact(Path("~/Desktop/worklog.json").expanduser()) as worklog:
+    try:
+        worklog = read_from_file(Path("~/Desktop/worklog.json").expanduser())
         click.echo(worklog)
+    except FileNotFoundError:
+        click.echo(
+            "No worklog file has been created yet. Start an activity to create it."
+        )
 
 
 @cli.command()

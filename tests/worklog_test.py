@@ -10,7 +10,7 @@ from timetracker.worklog.error import (
     ActivityAlreadyStopped,
     ActivityNeverStarted,
 )
-from timetracker.worklog.transaction import transact
+from timetracker.worklog.io import read_from_file, transact
 from ward import raises, test, using
 
 from tests import constants
@@ -190,14 +190,32 @@ for worklog in [Worklog(), constants.MIXED_WORKLOG]:
 @test(
     "Given a non-existing worklog JSON file, "
     "when entering the transaction context, "
-    "then an empty worklog is created"
+    "then the file is created and an empty worklog is yielded"
 )
 @using(fs=fake_fs)
 def _(fs: FakeFilesystem):
     fs.create_dir(WORKLOG_JSON_PATH.parent)
 
     with transact(WORKLOG_JSON_PATH) as worklog:
+        assert WORKLOG_JSON_PATH.exists()
         assert worklog == Worklog()
+
+    assert read_from_file(WORKLOG_JSON_PATH) == Worklog()
+
+
+@test(
+    "Given that the non-existing worklog JSON file would be located in a read-only directory, "
+    "when entering the transaction context, "
+    "then `PermissionError` is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_dir(WORKLOG_JSON_PATH.parent)
+    WORKLOG_JSON_PATH.parent.chmod(0o555)
+
+    with raises(PermissionError):
+        with transact(WORKLOG_JSON_PATH):
+            assert False, "context manager suite should not run"
 
 
 @test(
@@ -212,7 +230,7 @@ def _(fs: FakeFilesystem):
 
     with raises(PermissionError):
         with transact(WORKLOG_JSON_PATH):
-            pass
+            assert False, "context manager suite should not run"
 
 
 @test(
@@ -259,41 +277,6 @@ def _(fs: FakeFilesystem):
     with raises(PermissionError):
         with transact(WORKLOG_JSON_PATH):
             pass
-
-
-@test(
-    "Given a non-existing worklog JSON file, "
-    "when exiting the transaction context, "
-    "then the JSON file will be created"
-)
-@using(fs=fake_fs)
-def _(fs: FakeFilesystem):
-    fs.create_dir(WORKLOG_JSON_PATH.parent)
-
-    with transact(WORKLOG_JSON_PATH):
-        assert (
-            not WORKLOG_JSON_PATH.exists()
-        ), "JSON file should not yet exist before exiting the context"
-
-    assert WORKLOG_JSON_PATH.exists()
-
-
-@test(
-    "Given that the non-existing worklog JSON file would be located in a read-only directory, "
-    "when exiting the transaction context, "
-    "then `PermissionError` is raised"
-)
-@using(fs=fake_fs)
-def _(fs: FakeFilesystem):
-    fs.create_dir(WORKLOG_JSON_PATH.parent)
-    WORKLOG_JSON_PATH.parent.chmod(0o555)
-
-    context_entered = False
-    with raises(PermissionError):
-        with transact(WORKLOG_JSON_PATH):
-            context_entered = True
-
-    assert context_entered
 
 
 @test(
@@ -359,8 +342,8 @@ def _(fs: FakeFilesystem):
 
 @test(
     "Given an existing worklog JSON file which is read-only, "
-    "when exiting the transaction context without modifying the worklog, "
-    "then no exception is raised"
+    "when reading the file without a transaction context, "
+    "then the worklog is read"
 )
 @using(fs=fake_fs)
 def _(fs: FakeFilesystem):
@@ -368,7 +351,37 @@ def _(fs: FakeFilesystem):
         WORKLOG_JSON_PATH,
         contents=constants.MIXED_WORKLOG.to_json(),
     )
-    WORKLOG_JSON_PATH.chmod(0o444)
 
-    with transact(WORKLOG_JSON_PATH):
-        pass
+    assert read_from_file(WORKLOG_JSON_PATH) == constants.MIXED_WORKLOG
+
+
+@test(
+    "Given an existing worklog JSON file which isn't readable, "
+    "when reading the file without a transaction context, "
+    "then `PermissionError` is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents=constants.MIXED_WORKLOG.to_json(),
+    )
+    WORKLOG_JSON_PATH.chmod(0o333)
+
+    with raises(PermissionError):
+        read_from_file(WORKLOG_JSON_PATH)
+
+
+@test(
+    "Given a non-existing worklog JSON file, "
+    "when reading the file without a transaction context, "
+    "then `FileNotFoundError` is raised and the file is NOT created"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_dir(WORKLOG_JSON_PATH.parent)
+
+    with raises(FileNotFoundError):
+        read_from_file(WORKLOG_JSON_PATH)
+
+    assert not WORKLOG_JSON_PATH.exists()
