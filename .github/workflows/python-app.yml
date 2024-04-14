@@ -1,0 +1,37 @@
+name: Python application
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Setup PDM
+      uses: pdm-project/setup-pdm@v4
+      with:
+        python-version: "3.12"
+        cache: true
+    - name: Install Python dependencies
+      run: pdm sync --dev
+    - name: Pyright static analysis
+      uses: jakebailey/pyright-action@v2
+      with:
+        version: 1.1.311 # Optional (change me!)
+    - name: Run tests
+      run: pdm test
+    - name: Build package
+      run: pdm build
+    - name: Upload sdist Artifact
+      uses: actions/upload-artifact@v4.3.1
+      with:
+        path: dist/timetracker-*.tar.gz
