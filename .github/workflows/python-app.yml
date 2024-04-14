@@ -23,10 +23,15 @@ jobs:
         cache: true
     - name: Install Python dependencies
       run: pdm sync --dev
+    - name: Generate type stubs
+      uses: jakebailey/pyright-action@v2
+      with:
+        version: "1.1.311"
+        create-stub: timetracker
     - name: Pyright static analysis
       uses: jakebailey/pyright-action@v2
       with:
-        version: 1.1.311 # Optional (change me!)
+        version: "1.1.311"
     - name: Run tests
       run: pdm test
     - name: Build package
