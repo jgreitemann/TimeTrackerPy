@@ -2,6 +2,8 @@ from datetime import datetime
 
 
 class ActivityUpdateError(Exception):
+    activity_name: str
+
     def __init__(self, activity_name: str):
         super().__init__(f"failed to update activity '{activity_name}'")
         self.activity_name = activity_name
@@ -12,6 +14,8 @@ class ActivityStateError(Exception):
 
 
 class ActivityAlreadyStarted(ActivityStateError):
+    time_last_started: datetime
+
     def __init__(self, time_last_started: datetime):
         self.time_last_started = time_last_started
         super().__init__(
@@ -20,6 +24,8 @@ class ActivityAlreadyStarted(ActivityStateError):
 
 
 class ActivityAlreadyStopped(ActivityStateError):
+    time_last_stopped: datetime
+
     def __init__(self, time_last_stopped: datetime):
         self.time_last_stopped = time_last_stopped
         super().__init__(
