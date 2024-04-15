@@ -21,6 +21,9 @@ def cli_with_error_reporting():
         sys.exit(1)
 
 
+WORKLOG_JSON_PATH = Path("~/Desktop/worklog.json").expanduser()
+
+
 @click.group(
     cls=HelpColorsGroup,
     help_headers_color="yellow",
@@ -35,7 +38,7 @@ def cli():
 def status():
     """Print a summary of the worklog by activity."""
     try:
-        worklog = read_from_file(Path("~/Desktop/worklog.json").expanduser())
+        worklog = read_from_file(WORKLOG_JSON_PATH)
         click.echo(worklog)
     except FileNotFoundError:
         click.echo(
@@ -47,7 +50,7 @@ def status():
 @click.argument("activity")
 def start(activity: str):
     """Start a new activity or resume an existing one."""
-    with transact(Path("~/Desktop/worklog.json").expanduser()) as worklog:
+    with transact(WORKLOG_JSON_PATH) as worklog:
         worklog.update_activity(activity, lambda a: a.started())
 
 
@@ -55,5 +58,5 @@ def start(activity: str):
 @click.argument("activity")
 def stop(activity: str):
     """Stop a running activity."""
-    with transact(Path("~/Desktop/worklog.json").expanduser()) as worklog:
+    with transact(WORKLOG_JSON_PATH) as worklog:
         worklog.update_activity(activity, lambda a: a.stopped())

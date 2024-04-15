@@ -13,6 +13,7 @@ AFTERNOON_SECS = int((DINNER_TIME - COFFEE_TIME).total_seconds())
 
 UNFINISHED_STINT = Stint(begin=BREAKFAST_TIME)
 FINISHED_STINT = Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME)
+PUBLISHED_STINT = Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME, is_published=True)
 
 RUNNING_ACTIVITY = Activity(
     stints=[

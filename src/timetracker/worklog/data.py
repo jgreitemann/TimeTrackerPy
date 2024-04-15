@@ -26,14 +26,16 @@ from timetracker.worklog.coder import mapping_coder, seq_coder
 class Stint(DataClassJsonMixin):
     begin: datetime
     end: Optional[datetime] = None
+    is_published: bool = False
 
     def __str__(self) -> str:
         finish_format = self.end.isoformat() if self.end else "now"
-        return f"{self.begin.isoformat()} - {finish_format}"
+        published_format = "" if self.is_published else " (*)"
+        return f"{self.begin.isoformat()} - {finish_format}{published_format}"
 
     def __repr__(self) -> str:
         finish_format = self.end.isoformat() if self.end else "None"
-        return f"Stint(begin={self.begin.isoformat()}, end={finish_format})"
+        return f"Stint(begin={self.begin.isoformat()}, end={finish_format}, is_published={self.is_published})"
 
     def is_finished(self) -> bool:
         return self.end is not None
@@ -43,6 +45,14 @@ class Stint(DataClassJsonMixin):
             return replace(self, end=datetime.now().astimezone())
         else:
             raise ActivityAlreadyStopped(self.end)
+
+    def published(self) -> Self:
+        if self.end is None:
+            raise StintNotFinishedError()
+        elif self.is_published:
+            return self
+        else:
+            return replace(self, is_published=True)
 
     def seconds(self) -> int:
         if self.end is None:

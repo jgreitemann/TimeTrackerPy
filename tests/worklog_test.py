@@ -61,7 +61,36 @@ def _():
         constants.UNFINISHED_STINT.seconds()
 
 
-for stint in [constants.UNFINISHED_STINT, constants.FINISHED_STINT]:
+@test("An unpublished finished stint can be marked as published")
+def _():
+    published = constants.FINISHED_STINT.published()
+    assert published.is_published
+    assert published is not constants.FINISHED_STINT
+    assert published.begin == constants.FINISHED_STINT.begin
+    assert published.end == constants.FINISHED_STINT.end
+
+
+@test(
+    "Attempting to mark an unfinished stint as published raises `StintNotFinishedError`"
+)
+def _():
+    with raises(StintNotFinishedError):
+        constants.UNFINISHED_STINT.published()
+    assert not constants.UNFINISHED_STINT.is_published
+
+
+@test("Marking a published stint as published does nothing")
+def _():
+    published_again = constants.PUBLISHED_STINT.published()
+    assert published_again.is_published
+    assert published_again is constants.PUBLISHED_STINT
+
+
+for stint in [
+    constants.UNFINISHED_STINT,
+    constants.FINISHED_STINT,
+    constants.PUBLISHED_STINT,
+]:
 
     @test(
         "Stints can be serialized to and deserialized from JSON losslessly ({stint!r})"
