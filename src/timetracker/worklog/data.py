@@ -15,6 +15,7 @@ from timetracker.worklog.error import (
     ActivityAlreadyStarted,
     ActivityAlreadyStopped,
     ActivityNeverStarted,
+    ActivityNotFound,
     ActivityStateError,
     ActivityUpdateError,
     StintNotFinishedError,
@@ -63,13 +64,17 @@ class Stint(DataClassJsonMixin):
 
 @dataclass(frozen=True)
 class Activity(DataClassJsonMixin):
+    description: str
+    issue: str
     stints: Sequence[Stint] = field(
         default_factory=lambda: [],
         metadata=config(**seq_coder(Stint)),
     )
 
     def __str__(self) -> str:
-        return "\n".join(map(str, self.stints))
+        return f"{self.description}\nIssue: {self.issue}\n" + "\n".join(
+            map(str, self.stints)
+        )
 
     def current(self) -> Optional[Stint]:
         if len(self.stints) > 0:
@@ -97,6 +102,14 @@ class Activity(DataClassJsonMixin):
     def is_running(self) -> bool:
         return (c := self.current()) is not None and not c.is_finished()
 
+    @staticmethod
+    def verify(maybe_activity: Optional["Activity"]) -> "Activity":
+        match maybe_activity:
+            case None:
+                raise ActivityNotFound()
+            case Activity():
+                return maybe_activity
+
 
 @dataclass
 class Worklog(DataClassJsonMixin):
@@ -118,11 +131,13 @@ class Worklog(DataClassJsonMixin):
     def write_to_stream(self, output_stream: IOBase):
         output_stream.write(self.to_json())
 
-    def update_activity(self, name: str, func: Callable[[Activity], Activity]):
+    def update_activity(
+        self, name: str, func: Callable[[Optional[Activity]], Activity]
+    ):
         try:
             self.activities = {
                 **self.activities,
-                name: func(self.activities.get(name, Activity())),
+                name: func(self.activities.get(name)),
             }
         except ActivityStateError as e:
             raise ActivityUpdateError(name) from e

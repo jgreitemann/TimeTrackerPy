@@ -103,12 +103,17 @@ for stint in [
 
 @test("A new activity is not running")
 def _():
-    assert not Activity().is_running()
+    new_activity = Activity(
+        description=constants.NEW_ACTIVITY.description,
+        issue=constants.NEW_ACTIVITY.issue,
+    )
+    assert not new_activity.is_running()
+    assert new_activity == constants.NEW_ACTIVITY
 
 
 @test("Starting an new activity produces one with an unfinished stint")
 def _():
-    new_activity = Activity()
+    new_activity = deepcopy(constants.NEW_ACTIVITY)
     started_activity = new_activity.started()
     assert started_activity.is_running()
 
@@ -118,12 +123,14 @@ def _():
         case _ as value:
             assert False, f"{repr(value)} does not match the pattern"
 
-    assert new_activity == Activity()
+    assert new_activity == constants.NEW_ACTIVITY
 
 
 @test("Restarting an activity produces one with a new unfinished stint")
 def _():
-    stopped_activity = Activity(stints=[constants.FINISHED_STINT])
+    stopped_activity = Activity(
+        description="", issue="", stints=[constants.FINISHED_STINT]
+    )
     restarted_activity = stopped_activity.started()
     assert restarted_activity.is_running()
 
@@ -147,7 +154,9 @@ def _():
 
 @test("Stopping a running activity produces one with a finished stint")
 def _():
-    running_activity = Activity(stints=[Stint(begin=constants.BREAKFAST_TIME)])
+    running_activity = Activity(
+        description="", issue="", stints=[Stint(begin=constants.BREAKFAST_TIME)]
+    )
     match running_activity.stopped():
         case Activity(
             stints=[
@@ -165,14 +174,18 @@ def _():
 @test("Stopping an activity which is not running raises an exception")
 def _():
     with raises(ActivityNeverStarted):
-        Activity().stopped()
+        constants.NEW_ACTIVITY.stopped()
 
     with raises(ActivityAlreadyStopped) as ex:
         constants.COMPLETED_ACTIVITY.stopped()
     assert ex.raised.time_last_stopped == constants.COMPLETED_ACTIVITY.stints[-1].end
 
 
-for activity in [Activity(), constants.RUNNING_ACTIVITY, constants.COMPLETED_ACTIVITY]:
+for activity in [
+    constants.NEW_ACTIVITY,
+    constants.RUNNING_ACTIVITY,
+    constants.COMPLETED_ACTIVITY,
+]:
 
     @test(
         "Activities can be serialized to and deserialized from JSON losslessly ({activity!r})"
@@ -188,7 +201,9 @@ def _():
     assert Worklog().activities == {}
 
 
-@test("Updating a hitherto unknown activity creates an empty activity")
+@test(
+    "Updating a hitherto unknown activity invokes the callback with `None` but create one with the callback's result"
+)
 def _():
     log = deepcopy(constants.MIXED_WORKLOG)
 
@@ -196,7 +211,7 @@ def _():
     log.update_activity(
         "secret", lambda a: (received.append(a), constants.ALL_NIGHTER_ACTIVITY)[1]
     )
-    assert received == [Activity()]
+    assert received == [None]
 
     assert log.activities == {
         **constants.MIXED_WORKLOG.activities,
@@ -335,7 +350,7 @@ def _(fs: FakeFilesystem):
     )
 
     with transact(WORKLOG_JSON_PATH) as worklog:
-        worklog.update_activity("running", lambda a: a.stopped())
+        worklog.update_activity("running", lambda a: Activity.verify(a).stopped())
 
     assert Worklog.from_json(WORKLOG_JSON_PATH.read_text()) == worklog
 
@@ -356,7 +371,7 @@ def _(fs: FakeFilesystem):
     worklog = None
     with raises(PermissionError):
         with transact(WORKLOG_JSON_PATH) as worklog:
-            worklog.update_activity("running", lambda a: a.stopped())
+            worklog.update_activity("running", lambda a: Activity.verify(a).stopped())
 
     assert (
         worklog != constants.MIXED_WORKLOG

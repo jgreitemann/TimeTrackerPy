@@ -15,24 +15,44 @@ UNFINISHED_STINT = Stint(begin=BREAKFAST_TIME)
 FINISHED_STINT = Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME)
 PUBLISHED_STINT = Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME, is_published=True)
 
+NEW_ACTIVITY = Activity(
+    description="Onboarding",
+    issue="TIME-42",
+)
+
 RUNNING_ACTIVITY = Activity(
+    description="Backlog refinement",
+    issue="TIME-8",
     stints=[
         Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME),
         Stint(begin=COFFEE_TIME),
-    ]
+    ],
 )
 
 COMPLETED_ACTIVITY = Activity(
+    description="Support case",
+    issue="TIME-13",
     stints=[
         Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME),
         Stint(begin=COFFEE_TIME, end=DINNER_TIME),
-    ]
+    ],
+)
+
+PUBLISHED_ACTIVITY = Activity(
+    description="Support case",
+    issue="TIME-13",
+    stints=[
+        Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME, is_published=True),
+        Stint(begin=COFFEE_TIME, end=DINNER_TIME, is_published=True),
+    ],
 )
 
 ALL_NIGHTER_ACTIVITY = Activity(
+    description="Debugging",
+    issue="ME-1",
     stints=[
         Stint(begin=DINNER_TIME),
-    ]
+    ],
 )
 
 MIXED_WORKLOG = Worklog(

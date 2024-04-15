@@ -38,6 +38,11 @@ class ActivityNeverStarted(ActivityStateError):
         super().__init__("cannot stop an activity that has never been started")
 
 
+class ActivityNotFound(Exception):
+    def __init__(self):
+        super().__init__("this specified activity is not on file")
+
+
 class StintNotFinishedError(Exception):
     def __init__(self):
         super().__init__("cannot operate on an unfinished stint")
