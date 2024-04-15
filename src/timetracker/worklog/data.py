@@ -129,7 +129,7 @@ class Worklog(DataClassJsonMixin):
         return cls.from_json(input_stream.read())
 
     def write_to_stream(self, output_stream: IOBase):
-        output_stream.write(self.to_json())
+        output_stream.write(self.to_json(indent=2))
 
     def update_activity(
         self, name: str, func: Callable[[Optional[Activity]], Activity]
