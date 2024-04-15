@@ -9,6 +9,7 @@ dependencies = [
     "click>=8.1.7",
     "dataclasses-json>=0.6.4",
     "click-help-colors>=0.9.4",
+    "httpx>=0.27.0",
 ]
 requires-python = ">=3.12"
 readme = "README.md"
@@ -36,6 +37,7 @@ test = "ward"
 dev = [
     "ward>=0.68.0b0",
     "pyfakefs>=5.4.0",
+    "respx>=0.21.1",
 ]
 
 
