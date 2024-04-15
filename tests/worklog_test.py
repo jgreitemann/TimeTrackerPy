@@ -9,6 +9,7 @@ from timetracker.worklog.error import (
     ActivityAlreadyStarted,
     ActivityAlreadyStopped,
     ActivityNeverStarted,
+    StintNotFinishedError,
 )
 from timetracker.worklog.io import read_from_file, transact
 from ward import raises, test, using
@@ -45,6 +46,19 @@ def _():
     with raises(ActivityAlreadyStopped) as ex:
         constants.FINISHED_STINT.finished()
     assert ex.raised.time_last_stopped == constants.FINISHED_STINT.end
+
+
+@test("The number of seconds in a finished stint can be queried")
+def _():
+    assert constants.FINISHED_STINT.seconds() == constants.MORNING_SECS
+
+
+@test(
+    "Querying the number of seconds in an unfinished stint raises `StintNotFinishedError`"
+)
+def _():
+    with raises(StintNotFinishedError):
+        constants.UNFINISHED_STINT.seconds()
 
 
 for stint in [constants.UNFINISHED_STINT, constants.FINISHED_STINT]:

@@ -36,3 +36,8 @@ class ActivityAlreadyStopped(ActivityStateError):
 class ActivityNeverStarted(ActivityStateError):
     def __init__(self):
         super().__init__("cannot stop an activity that has never been started")
+
+
+class StintNotFinishedError(Exception):
+    def __init__(self):
+        super().__init__("cannot operate on an unfinished stint")

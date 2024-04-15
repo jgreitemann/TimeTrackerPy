@@ -8,6 +8,9 @@ LUNCH_TIME = datetime.fromisoformat("2024-02-29T12:03:47+0100")
 COFFEE_TIME = datetime.fromisoformat("2024-02-29T13:21:26+0100")
 DINNER_TIME = datetime.fromisoformat("2024-02-29T18:44:34+0100")
 
+MORNING_SECS = int((LUNCH_TIME - BREAKFAST_TIME).total_seconds())
+AFTERNOON_SECS = int((DINNER_TIME - COFFEE_TIME).total_seconds())
+
 UNFINISHED_STINT = Stint(begin=BREAKFAST_TIME)
 FINISHED_STINT = Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME)
 

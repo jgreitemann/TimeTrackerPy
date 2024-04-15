@@ -1,7 +1,6 @@
 from dataclasses import dataclass, field, replace
 from datetime import datetime
 from io import IOBase
-from pathlib import Path
 from typing import (
     Callable,
     Mapping,
@@ -18,6 +17,7 @@ from timetracker.worklog.error import (
     ActivityNeverStarted,
     ActivityStateError,
     ActivityUpdateError,
+    StintNotFinishedError,
 )
 from timetracker.worklog.coder import mapping_coder, seq_coder
 
@@ -43,6 +43,12 @@ class Stint(DataClassJsonMixin):
             return replace(self, end=datetime.now().astimezone())
         else:
             raise ActivityAlreadyStopped(self.end)
+
+    def seconds(self) -> int:
+        if self.end is None:
+            raise StintNotFinishedError()
+        else:
+            return round((self.end - self.begin).total_seconds())
 
 
 @dataclass(frozen=True)
