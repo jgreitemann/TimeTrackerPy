@@ -2,6 +2,7 @@ from dataclasses import dataclass, field, replace
 from datetime import datetime
 from io import IOBase
 from typing import (
+    Awaitable,
     Callable,
     Mapping,
     Optional,
@@ -145,6 +146,17 @@ class Worklog(DataClassJsonMixin):
             self.activities = {
                 **self.activities,
                 name: func(self.activities.get(name)),
+            }
+        except ActivityStateError as e:
+            raise ActivityUpdateError(name) from e
+
+    async def async_update_activity(
+        self, name: str, func: Callable[[Optional[Activity]], Awaitable[Activity]]
+    ):
+        try:
+            self.activities = {
+                **self.activities,
+                name: await func(self.activities.get(name)),
             }
         except ActivityStateError as e:
             raise ActivityUpdateError(name) from e

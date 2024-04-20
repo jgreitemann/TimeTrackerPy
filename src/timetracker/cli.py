@@ -1,3 +1,4 @@
+import asyncio
 import sys
 from pathlib import Path
 from typing import Optional
@@ -5,6 +6,7 @@ from typing import Optional
 import click
 from click_help_colors import HelpColorsGroup
 
+from timetracker.api import Api, ApiError
 from timetracker.config import Config
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
@@ -99,3 +101,33 @@ def reset():
     """Delete the worklog."""
     if click.confirm("This will delete the worklog. Proceed?"):
         WORKLOG_JSON_PATH.unlink()
+
+
+@cli.command()
+@click.option("--activity")
+@click.pass_obj
+def publish(config: Config, activity: Optional[str]):
+    """Submit unpublished worklog entries to JIRA."""
+
+    api = Api(config)
+
+    async def publish(activity: Optional[str]):
+        with transact(WORKLOG_JSON_PATH) as worklog:
+            if activity is None:
+                errors = await api.publish_worklog(worklog)
+            else:
+                errors: list[ApiError] = []
+
+                async def publish_activity(a: Optional[Activity]):
+                    nonlocal errors
+                    published_activity, errors = await api.publish_activity(
+                        activity, Activity.verify(a)
+                    )
+                    return published_activity
+
+                await worklog.async_update_activity(activity, publish_activity)
+
+        for e in errors:
+            report_error(e)
+
+    asyncio.run(publish(activity))
