@@ -9,18 +9,30 @@ from timetracker.config import Config
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
 
-ERROR = click.style("error:", fg="red", bold=True)
+ERROR = click.style("    error:", fg="red", bold=True)
 CAUSED_BY = click.style("caused by:", bold=True)
+NOTE = click.style("     note:", bold=True)
+
+
+def report_error(e: Exception):
+    def report_notes(e: BaseException):
+        if hasattr(e, "__notes__"):
+            for note in e.__notes__:
+                click.echo(f"{NOTE} {note}", err=True)
+
+    click.echo(f"{ERROR} {e}", err=True)
+    report_notes(e)
+    cause = e
+    while (cause := cause.__cause__) is not None:
+        click.echo(f"{CAUSED_BY} {cause}", err=True)
+        report_notes(cause)
 
 
 def cli_with_error_reporting():
     try:
         cli()
     except Exception as e:
-        click.echo(f"{ERROR} {e}", err=True)
-        cause = e
-        while (cause := cause.__cause__) is not None:
-            click.echo(f"{CAUSED_BY} {cause}", err=True)
+        report_error(e)
         sys.exit(1)
 
 
