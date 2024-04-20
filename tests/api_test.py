@@ -1,3 +1,4 @@
+from copy import deepcopy
 from typing import Optional, Sequence
 
 import httpx
@@ -186,3 +187,30 @@ async def _(jira: FakeJira):
 
     raise_any(errors)
     assert activity == constants.PUBLISHED_ACTIVITY
+
+
+@test(
+    "Given a worklog with some unpublished activities, "
+    "when publishing with the correct access token, "
+    "then only the completed unpublished stints are published"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    for name, activity in constants.MIXED_WORKLOG.activities.items():
+        for stint in activity.stints:
+            if stint.is_finished() and not stint.is_published:
+                jira.mock_post_worklog(
+                    activity.issue,
+                    f"[{name}] {activity.description}",
+                    started=stint.begin_jira_format(),
+                    seconds_spent=stint.seconds(),
+                )
+
+    worklog = deepcopy(constants.MIXED_WORKLOG)
+    raise_any(await jira.api.publish_worklog(worklog))
+
+    for name, activity in worklog.activities.items():
+        for i, stint in enumerate(activity.stints):
+            assert (
+                stint.is_published == stint.is_finished()
+            ), f"discrepancy for stint #{i} of activity '{name}'"

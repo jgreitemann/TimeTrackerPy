@@ -51,6 +51,15 @@ PUBLISHED_ACTIVITY = Activity(
     ],
 )
 
+PARTIALLY_PUBLISHED_ACTIVITY = Activity(
+    description="Another support case",
+    issue="TIME-13",
+    stints=[
+        Stint(begin=BREAKFAST_TIME, end=LUNCH_TIME, is_published=True),
+        Stint(begin=COFFEE_TIME, end=DINNER_TIME),
+    ],
+)
+
 ALL_NIGHTER_ACTIVITY = Activity(
     description="Debugging",
     issue="ME-1",
@@ -63,5 +72,7 @@ MIXED_WORKLOG = Worklog(
     activities={
         "completed": COMPLETED_ACTIVITY,
         "running": RUNNING_ACTIVITY,
+        "partially-published": PARTIALLY_PUBLISHED_ACTIVITY,
+        "published": PUBLISHED_ACTIVITY,
     }
 )

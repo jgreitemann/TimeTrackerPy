@@ -41,7 +41,7 @@ class Config(DataClassJsonMixin):
                 json={
                     "comment": comment,
                     "visibility": {"type": "group", "value": self.default_group},
-                    "started": stint.begin.strftime("%Y-%m-%dT%H:%M:%S.000%z"),
+                    "started": stint.begin_jira_format(),
                     "timeSpentSeconds": stint.seconds(),
                 },
             )
@@ -87,7 +87,7 @@ class Config(DataClassJsonMixin):
         async with httpx.AsyncClient() as client:
             return await self._publish_activity(client, name, activity)
 
-    async def publish_worklog(self, worklog: Worklog) -> tuple[Worklog, list[ApiError]]:
+    async def publish_worklog(self, worklog: Worklog) -> list[ApiError]:
         async with httpx.AsyncClient() as client:
             activities, errors = zip(
                 *await asyncio.gather(
@@ -98,7 +98,7 @@ class Config(DataClassJsonMixin):
                 )
             )
 
-            return (
-                replace(worklog, activities=list(activities)),
-                list(chain.from_iterable(errors)),
-            )
+            worklog.activities = {
+                name: activity for name, activity in zip(worklog.activities, activities)
+            }
+            return list(chain.from_iterable(errors))

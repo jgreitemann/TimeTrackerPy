@@ -56,6 +56,9 @@ class Stint(DataClassJsonMixin):
         else:
             return replace(self, is_published=True)
 
+    def begin_jira_format(self) -> str:
+        return self.begin.strftime("%Y-%m-%dT%H:%M:%S.000%z")
+
     def seconds(self) -> int:
         if self.end is None:
             raise StintNotFinishedError()
