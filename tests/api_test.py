@@ -3,7 +3,8 @@ from typing import Optional, Sequence
 
 import httpx
 import respx
-from timetracker.api import Config, StintPostError
+from timetracker.api import Api, StintPostError
+from timetracker.config import Config
 from ward import fixture, test, using
 
 from tests import constants
@@ -21,13 +22,15 @@ UNAUTHORIZED_RESPONSE = httpx.Response(
 
 
 class FakeJira:
-    api: Config
+    api: Api
 
     def __init__(self):
-        self.api = Config(
-            host="jira.example.com",
-            token="deadbeef",
-            default_group="minions",
+        self.api = Api(
+            Config(
+                host="jira.example.com",
+                token="deadbeef",
+                default_group="minions",
+            )
         )
 
     def mock_post_worklog(
@@ -41,12 +44,12 @@ class FakeJira:
         token: Optional[str] = None,
     ) -> respx.Route:
         if group is None:
-            group = self.api.default_group
+            group = self.api.config.default_group
         if token is None:
-            token = self.api.token
+            token = self.api.config.token
 
         return respx.post(
-            f"https://{self.api.host}/rest/api/2/issue/{issue}/worklog",
+            f"https://{self.api.config.host}/rest/api/2/issue/{issue}/worklog",
             headers={"Authorization": f"Bearer {token}"},
             json={
                 "comment": comment,

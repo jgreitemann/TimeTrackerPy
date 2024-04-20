@@ -1,11 +1,11 @@
 import asyncio
-from dataclasses import dataclass, replace
-from typing import Mapping
+from dataclasses import replace
 from itertools import chain
+from typing import Mapping
 
 import httpx
-from dataclasses_json import DataClassJsonMixin
 
+from timetracker.config import Config
 from timetracker.worklog.data import Activity, Stint, Worklog
 
 
@@ -22,25 +22,25 @@ class StintPostError(ApiError):
         self.stint = stint
 
 
-@dataclass(frozen=True)
-class Config(DataClassJsonMixin):
-    host: str
-    token: str
-    default_group: str
+class Api:
+    config: Config
+
+    def __init__(self, config: Config):
+        self.config = config
 
     def _headers(self) -> Mapping[str, str]:
-        return {"Authorization": f"Bearer {self.token}"}
+        return {"Authorization": f"Bearer {self.config.token}"}
 
     async def _publish_stint(
         self, client: httpx.AsyncClient, issue: str, comment: str, stint: Stint
     ) -> Stint:
         try:
             response = await client.post(
-                f"https://{self.host}/rest/api/2/issue/{issue}/worklog",
+                f"https://{self.config.host}/rest/api/2/issue/{issue}/worklog",
                 headers=self._headers(),
                 json={
                     "comment": comment,
-                    "visibility": {"type": "group", "value": self.default_group},
+                    "visibility": {"type": "group", "value": self.config.default_group},
                     "started": stint.begin_jira_format(),
                     "timeSpentSeconds": stint.seconds(),
                 },

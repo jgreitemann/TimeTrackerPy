@@ -5,6 +5,7 @@ from typing import Optional
 import click
 from click_help_colors import HelpColorsGroup
 
+from timetracker.config import Config
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
 
@@ -43,8 +44,14 @@ def ensure_activity(maybe_activity: Optional[Activity]) -> Activity:
     help_options_color="green",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
-def cli():
-    pass
+@click.option("--config-file", type=click.Path(exists=True))
+@click.pass_context
+def cli(ctx: click.Context, config_file: Optional[Path]):
+    if config_file is None:
+        config_file = Path("~/.config/timetracker.json").expanduser()
+
+    with open(config_file, "r") as config_stream:
+        ctx.obj = Config.from_json(config_stream.read())
 
 
 @cli.command()
@@ -73,3 +80,10 @@ def stop(activity: str):
     """Stop a running activity."""
     with transact(WORKLOG_JSON_PATH) as worklog:
         worklog.update_activity(activity, lambda a: Activity.verify(a).stopped())
+
+
+@cli.command()
+def reset():
+    """Delete the worklog."""
+    if click.confirm("This will delete the worklog. Proceed?"):
+        WORKLOG_JSON_PATH.unlink()
