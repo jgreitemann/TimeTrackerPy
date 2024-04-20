@@ -19,6 +19,7 @@ from timetracker.worklog.error import (
     ActivityStateError,
     ActivityUpdateError,
     StintNotFinishedError,
+    WorklogDeserializationError,
 )
 from timetracker.worklog.coder import mapping_coder, seq_coder
 
@@ -126,7 +127,10 @@ class Worklog(DataClassJsonMixin):
 
     @classmethod
     def from_stream(cls, input_stream: IOBase) -> Self:
-        return cls.from_json(input_stream.read())
+        try:
+            return cls.from_json(input_stream.read())
+        except Exception as e:
+            raise WorklogDeserializationError() from e
 
     def write_to_stream(self, output_stream: IOBase):
         output_stream.write(self.to_json(indent=2))

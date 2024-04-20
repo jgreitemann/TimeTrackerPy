@@ -11,6 +11,7 @@ from timetracker.worklog.error import (
     ActivityAlreadyStopped,
     ActivityNeverStarted,
     StintNotFinishedError,
+    WorklogDeserializationError,
 )
 from timetracker.worklog.io import read_from_file, transact
 from ward import raises, test, using
@@ -435,6 +436,22 @@ def _(fs: FakeFilesystem):
     )
 
     assert read_from_file(WORKLOG_JSON_PATH) == constants.MIXED_WORKLOG
+
+
+@test(
+    "Given an existing worklog JSON file which is read-only, "
+    "when reading an invalid file, "
+    "then `WorklogDeserializationError` is raised"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents="{",
+    )
+
+    with raises(WorklogDeserializationError):
+        read_from_file(WORKLOG_JSON_PATH)
 
 
 @test(

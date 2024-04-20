@@ -46,3 +46,8 @@ class ActivityNotFound(Exception):
 class StintNotFinishedError(Exception):
     def __init__(self):
         super().__init__("cannot operate on an unfinished stint")
+
+
+class WorklogDeserializationError(Exception):
+    def __init__(self):
+        super().__init__("failed to deserialize worklog from JSON")
