@@ -35,4 +35,5 @@ def transact(path: Path) -> Generator[Worklog, None, None]:
         yield worklog
 
         if worklog.activities is not original_activities:
+            file.truncate()
             worklog.write_to_stream(file)

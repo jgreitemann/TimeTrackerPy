@@ -1,4 +1,5 @@
 from copy import deepcopy
+from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from time import sleep
@@ -352,6 +353,29 @@ def _(fs: FakeFilesystem):
     with transact(WORKLOG_JSON_PATH) as worklog:
         worklog.update_activity("running", lambda a: Activity.verify(a).stopped())
 
+    assert Worklog.from_json(WORKLOG_JSON_PATH.read_text()) == worklog
+
+
+@test(
+    "Given an existing worklog JSON file which is read-writable, "
+    "when exiting the transaction context after modifying the worklog such that its JSON representation becomes shorter, "
+    "then the JSON file will be updated and truncated"
+)
+@using(fs=fake_fs)
+def _(fs: FakeFilesystem):
+    fs.create_file(
+        WORKLOG_JSON_PATH,
+        contents=constants.MIXED_WORKLOG.to_json(indent=2),
+    )
+    size_before = WORKLOG_JSON_PATH.stat().st_size
+
+    with transact(WORKLOG_JSON_PATH) as worklog:
+        worklog.update_activity(
+            "running", lambda a: replace(Activity.verify(a), stints=[])
+        )
+
+    size_after = WORKLOG_JSON_PATH.stat().st_size
+    assert size_after < size_before
     assert Worklog.from_json(WORKLOG_JSON_PATH.read_text()) == worklog
 
 
