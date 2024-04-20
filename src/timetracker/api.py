@@ -41,7 +41,7 @@ class Config(DataClassJsonMixin):
                 json={
                     "comment": comment,
                     "visibility": {"type": "group", "value": self.default_group},
-                    "started": stint.begin.isoformat(),
+                    "started": stint.begin.strftime("%Y-%m-%dT%H:%M:%S.000%z"),
                     "timeSpentSeconds": stint.seconds(),
                 },
             )

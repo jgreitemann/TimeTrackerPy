@@ -91,13 +91,13 @@ async def _(jira: FakeJira):
     jira.mock_post_worklog(
         "TIME-13",
         "[ME-12345] Support case",
-        started=constants.BREAKFAST_TIME.isoformat(),
+        started=constants.BREAKFAST_TIME_FORMAT,
         seconds_spent=constants.MORNING_SECS,
     ).mock(httpx.Response(201))
     jira.mock_post_worklog(
         "TIME-13",
         "[ME-12345] Support case",
-        started=constants.COFFEE_TIME.isoformat(),
+        started=constants.COFFEE_TIME_FORMAT,
         seconds_spent=constants.AFTERNOON_SECS,
     ).mock(httpx.Response(201))
 
@@ -121,7 +121,7 @@ async def _(jira: FakeJira):
     jira.mock_post_worklog(
         "TIME-8",
         "[BLR] Backlog refinement",
-        started=constants.BREAKFAST_TIME.isoformat(),
+        started=constants.BREAKFAST_TIME_FORMAT,
         seconds_spent=constants.MORNING_SECS,
     ).mock(httpx.Response(201))
 
@@ -145,13 +145,13 @@ async def _(jira: FakeJira):
     jira.mock_post_worklog(
         "TIME-13",
         "[ME-12345] Support case",
-        started=constants.BREAKFAST_TIME.isoformat(),
+        started=constants.BREAKFAST_TIME_FORMAT,
         seconds_spent=constants.MORNING_SECS,
     ).mock(UNAUTHORIZED_RESPONSE)
     jira.mock_post_worklog(
         "TIME-13",
         "[ME-12345] Support case",
-        started=constants.COFFEE_TIME.isoformat(),
+        started=constants.COFFEE_TIME_FORMAT,
         seconds_spent=constants.AFTERNOON_SECS,
     ).mock(UNAUTHORIZED_RESPONSE)
 
