@@ -73,7 +73,7 @@ class Config(DataClassJsonMixin):
             *(
                 (
                     publish_and_aggregate_errors(stint)
-                    if stint.is_finished()
+                    if not stint.is_published and stint.is_finished()
                     else ((f := asyncio.Future()).set_result(stint) or f)
                 )
                 for stint in activity.stints

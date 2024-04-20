@@ -171,3 +171,18 @@ async def _(jira: FakeJira):
     assert (
         activity == constants.COMPLETED_ACTIVITY
     ), "stints should NOT be marked as published"
+
+
+@test(
+    "Given an activity with published stints, "
+    "when publishing with the correct access token, "
+    "then no HTTP requests are made for stints that have already been published"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    activity, errors = await jira.api.publish_activity(
+        "ME-12345", constants.PUBLISHED_ACTIVITY
+    )
+
+    raise_any(errors)
+    assert activity == constants.PUBLISHED_ACTIVITY
