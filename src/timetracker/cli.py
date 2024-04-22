@@ -38,9 +38,6 @@ def cli_with_error_reporting():
         sys.exit(1)
 
 
-WORKLOG_JSON_PATH = Path("~/Desktop/worklog.json").expanduser()
-
-
 def ensure_activity(maybe_activity: Optional[Activity]) -> Activity:
     match maybe_activity:
         case None:
@@ -82,7 +79,19 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
                 abort=True,
             )
 
+        store_dir: Path = click.prompt(
+            "  → Storage directory location",
+            type=Path,
+            default=Path("~/.local/share/timetracker"),
+        ).expanduser()
+
+        if not store_dir.exists() and click.confirm(
+            f"Directory '{click.format_filename(store_dir)}' does not exist. Create it?"
+        ):
+            store_dir.mkdir(parents=True, exist_ok=True)
+
         config = Config(
+            store_dir=str(store_dir),
             host=click.prompt("  → JIRA API host name"),
             token=click.prompt("  → JIRA API personal access token"),
             default_group=click.prompt("  → Worklog visibility group"),
@@ -97,10 +106,11 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
 
 
 @cli.command()
-def status():
+@click.pass_obj
+def status(config: Config):
     """Print a summary of the worklog by activity."""
     try:
-        worklog = read_from_file(WORKLOG_JSON_PATH)
+        worklog = read_from_file(config.worklog_path)
         click.echo(worklog)
     except FileNotFoundError:
         click.echo(
@@ -110,25 +120,28 @@ def status():
 
 @cli.command()
 @click.argument("activity")
-def start(activity: str):
+@click.pass_obj
+def start(config: Config, activity: str):
     """Start a new activity or resume an existing one."""
-    with transact(WORKLOG_JSON_PATH) as worklog:
+    with transact(config.worklog_path) as worklog:
         worklog.update_activity(activity, lambda a: ensure_activity(a).started())
 
 
 @cli.command()
 @click.argument("activity")
-def stop(activity: str):
+@click.pass_obj
+def stop(config: Config, activity: str):
     """Stop a running activity."""
-    with transact(WORKLOG_JSON_PATH) as worklog:
+    with transact(config.worklog_path) as worklog:
         worklog.update_activity(activity, lambda a: Activity.verify(a).stopped())
 
 
 @cli.command()
-def reset():
+@click.pass_obj
+def reset(config: Config):
     """Delete the worklog."""
     if click.confirm("This will delete the worklog. Proceed?"):
-        WORKLOG_JSON_PATH.unlink()
+        config.worklog_path.unlink()
 
 
 @cli.command()
@@ -140,7 +153,7 @@ def publish(config: Config, activity: Optional[str]):
     api = Api(config)
 
     async def publish(activity: Optional[str]):
-        with transact(WORKLOG_JSON_PATH) as worklog:
+        with transact(config.worklog_path) as worklog:
             if activity is None:
                 errors = await api.publish_worklog(worklog)
             else:

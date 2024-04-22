@@ -27,6 +27,7 @@ class FakeJira:
     def __init__(self):
         self.api = Api(
             Config(
+                store_dir="",
                 host="jira.example.com",
                 token="deadbeef",
                 default_group="minions",
