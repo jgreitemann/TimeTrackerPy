@@ -11,9 +11,9 @@ from timetracker.config import Config
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
 
-ERROR = click.style("    error:", fg="red", bold=True)
-CAUSED_BY = click.style("caused by:", bold=True)
-NOTE = click.style("     note:", bold=True)
+ERROR = click.style("\nerror:", fg="red", bold=True)
+CAUSED_BY = click.style("  caused by:", bold=True)
+NOTE = click.style("       note:", bold=True)
 
 
 def report_error(e: Exception):
@@ -58,14 +58,42 @@ def ensure_activity(maybe_activity: Optional[Activity]) -> Activity:
     help_options_color="green",
     context_settings={"help_option_names": ["-h", "--help"]},
 )
-@click.option("--config-file", type=click.Path(exists=True))
+@click.option("--config-file", type=click.Path(path_type=Path))
 @click.pass_context
 def cli(ctx: click.Context, config_file: Optional[Path]):
     if config_file is None:
         config_file = Path("~/.config/timetracker.json").expanduser()
 
-    with open(config_file, "r") as config_stream:
-        ctx.obj = Config.from_json(config_stream.read())
+    try:
+        with open(config_file, "r") as config_stream:
+            ctx.obj = Config.from_json(config_stream.read())
+    except FileNotFoundError:
+        click.secho(
+            f"The configuration file '{click.format_filename(config_file)}' does not exist.",
+            fg="yellow",
+            bold=True,
+        )
+        if not click.confirm("Do you want to create it?"):
+            raise
+
+        if config_file.suffix != ".json":
+            click.confirm(
+                "Configuration file does not have '.json' extension. Proceed anyway?",
+                abort=True,
+            )
+
+        config = Config(
+            host=click.prompt("  → JIRA API host name"),
+            token=click.prompt("  → JIRA API personal access token"),
+            default_group=click.prompt("  → Worklog visibility group"),
+        )
+
+        config_file.parent.mkdir(exist_ok=True)
+
+        with open(config_file, "w") as config_stream:
+            ctx.obj = config
+            config_stream.write(config.to_json(indent=2))
+        click.secho("✨ Configuration file has been created\n", bold=True)
 
 
 @cli.command()
