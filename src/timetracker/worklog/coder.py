@@ -2,6 +2,7 @@ from functools import partial
 from typing import (
     Callable,
     Dict,
+    Generic,
     List,
     Mapping,
     Sequence,
@@ -31,7 +32,11 @@ def encode_mapping(mapping: Mapping[str, T]) -> Dict[str, Json]:
     return {k: v.to_dict() for k, v in mapping.items()}
 
 
-class Coder[U, V](TypedDict):
+U = TypeVar("U")
+V = TypeVar("V")
+
+
+class Coder(TypedDict, Generic[U, V]):
     encoder: Callable[[U], V]
     decoder: Callable[[V], U]
 
