@@ -40,7 +40,7 @@ class ActivityNeverStarted(ActivityStateError):
 
 class ActivityNotFound(Exception):
     def __init__(self):
-        super().__init__("this specified activity is not on file")
+        super().__init__("the specified activity is not on file")
 
 
 class StintNotFinishedError(Exception):
