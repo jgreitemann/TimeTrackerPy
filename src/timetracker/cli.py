@@ -1,6 +1,4 @@
 import asyncio
-import datetime
-from itertools import dropwhile, groupby, repeat, zip_longest
 import sys
 from pathlib import Path
 from typing import Optional
@@ -9,94 +7,16 @@ import click
 from click_help_colors import HelpColorsGroup
 from rich.console import Console
 from rich.padding import Padding
-from rich.style import Style
-from rich.table import Table
-from rich.markup import escape
 
 from timetracker.api import Api, ApiError
 from timetracker.config import Config
+from timetracker.tables import activity_table
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
 
 ERROR = click.style("\nerror:", fg="red", bold=True)
 CAUSED_BY = click.style("  caused by:", bold=True)
 NOTE = click.style("       note:", bold=True)
-
-
-def report_error(e: Exception):
-    def report_notes(e: BaseException):
-        if hasattr(e, "__notes__"):
-            for note in e.__notes__:
-                click.echo(f"{NOTE} {note}", err=True)
-
-    click.echo(f"{ERROR} {e}", err=True)
-    report_notes(e)
-    cause = e
-    while (cause := cause.__cause__) is not None:
-        click.echo(f"{CAUSED_BY} {cause}", err=True)
-        report_notes(cause)
-
-
-def cli_with_error_reporting():
-    try:
-        cli()
-    except Exception as e:
-        report_error(e)
-        sys.exit(1)
-
-
-def ensure_activity(maybe_activity: Optional[Activity]) -> Activity:
-    match maybe_activity:
-        case None:
-            return Activity(
-                description=click.prompt("Description"),
-                issue=click.prompt("Issue"),
-            )
-        case Activity():
-            return maybe_activity
-
-
-def _short_date_str(
-    date: datetime.date, relative_to: datetime.date = datetime.date.today()
-) -> str:
-    if date == relative_to:
-        return "Today"
-    elif date.year == relative_to.year:
-        return f"{date:%a %b %d}"
-    else:
-        return f"{date:%a %b %d %Y}"
-
-
-def _short_time_str(time: datetime.time) -> str:
-    return time.isoformat(timespec="minutes")
-
-
-def _work_timedelta_str(seconds: int, aligned: bool = False) -> str:
-    weeks, seconds = divmod(seconds, 144000)
-    days, seconds = divmod(seconds, 28800)
-    hours, seconds = divmod(seconds, 3600)
-    minutes, seconds = divmod(seconds, 60)
-    if aligned:
-        components = [
-            f"{weeks}w",
-            f"{days}d",
-            f"{hours:2}h",
-            f"{minutes:2}m",
-        ]
-    else:
-        components = [
-            f"{weeks}w",
-            f"{days}d",
-            f"{hours}h",
-            f"{minutes}m",
-        ]
-
-    components = list(dropwhile(lambda s: s.lstrip().startswith("0"), components))
-
-    if len(components) == 0:
-        return f"{seconds}s"
-
-    return " ".join(components)
 
 
 @click.group(
@@ -184,49 +104,7 @@ def log(config: Config):
     console = Console()
 
     for name, activity in worklog.activities.items():
-        total_seconds = sum(
-            (stint if stint.is_finished() else stint.finished()).seconds()
-            for stint in activity.stints
-        )
-
-        table = Table(
-            title=escape(f"[{name}] {activity.description}"),
-            caption=escape(
-                f"logged {_work_timedelta_str(total_seconds)} on issue {activity.issue}"
-            ),
-            title_style=Style(bold=True),
-            style=Style(dim=True),
-            min_width=50,
-        )
-
-        table.add_column("Date")
-        table.add_column("Start", justify="center")
-        table.add_column("End", justify="center")
-        table.add_column("Duration", justify="right")
-
-        for date_field, stints in groupby(
-            activity.stints, key=lambda s: _short_date_str(s.begin.date())
-        ):
-            table.add_section()
-            for date_field, stint in zip_longest(repeat(date_field, 1), stints):
-                table.add_row(
-                    date_field,
-                    _short_time_str(stint.begin.time()),
-                    (
-                        "[red bold]ongoing"
-                        if stint.end is None
-                        else _short_time_str(stint.end.time())
-                    ),
-                    _work_timedelta_str(
-                        (stint if stint.is_finished() else stint.finished()).seconds(),
-                        aligned=True,
-                    ),
-                    style=Style(
-                        color=None if stint.is_published else "yellow",
-                        bold=not stint.is_finished(),
-                    ),
-                )
-
+        table = activity_table(name, activity)
         console.print(Padding(table, pad=1))
 
 
@@ -236,7 +114,7 @@ def log(config: Config):
 def start(config: Config, activity: str):
     """Start a new activity or resume an existing one."""
     with transact(config.worklog_path) as worklog:
-        worklog.update_activity(activity, lambda a: ensure_activity(a).started())
+        worklog.update_activity(activity, lambda a: _ensure_activity(a).started())
 
 
 @cli.command()
@@ -281,6 +159,39 @@ def publish(config: Config, activity: Optional[str]):
                 await worklog.async_update_activity(activity, publish_activity)
 
         for e in errors:
-            report_error(e)
+            _report_error(e)
 
     asyncio.run(publish(activity))
+
+
+def cli_with_error_reporting():
+    try:
+        cli()
+    except Exception as e:
+        _report_error(e)
+        sys.exit(1)
+
+
+def _report_error(e: Exception):
+    def report_notes(e: BaseException):
+        if hasattr(e, "__notes__"):
+            for note in e.__notes__:
+                click.echo(f"{NOTE} {note}", err=True)
+
+    click.echo(f"{ERROR} {e}", err=True)
+    report_notes(e)
+    cause = e
+    while (cause := cause.__cause__) is not None:
+        click.echo(f"{CAUSED_BY} {cause}", err=True)
+        report_notes(cause)
+
+
+def _ensure_activity(maybe_activity: Optional[Activity]) -> Activity:
+    match maybe_activity:
+        case None:
+            return Activity(
+                description=click.prompt("Description"),
+                issue=click.prompt("Issue"),
+            )
+        case Activity():
+            return maybe_activity
