@@ -12,7 +12,7 @@ def activity_table(name: str, activity: Activity) -> Table:
         for stint in activity.stints
     )
 
-    table = _styled_table(
+    table = Table(
         title=escape(f"[{name}] {activity.description}"),
         caption=escape(
             f"logged {_work_timedelta_str(total_seconds)} on issue {activity.issue}"
@@ -91,13 +91,3 @@ def _work_timedelta_str(seconds: int, aligned: bool = False) -> str:
         return f"{seconds}s"
 
     return " ".join(components)
-
-
-def _styled_table(*, title: str, caption: str):
-    return Table(
-        title=title,
-        caption=caption,
-        style=Style(dim=True),
-        title_style=Style(bold=True),
-        min_width=50,
-    )

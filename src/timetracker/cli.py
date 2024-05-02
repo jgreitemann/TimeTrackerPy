@@ -7,6 +7,8 @@ import click
 from click_help_colors import HelpColorsGroup
 from rich.console import Console
 from rich.padding import Padding
+from rich.style import Style
+from rich.table import Table
 
 from timetracker.api import Api, ApiError
 from timetracker.config import Config
@@ -105,6 +107,7 @@ def log(config: Config):
 
     for name, activity in worklog.activities.items():
         table = activity_table(name, activity)
+        _apply_table_style(table)
         console.print(Padding(table, pad=1))
 
 
@@ -195,3 +198,9 @@ def _ensure_activity(maybe_activity: Optional[Activity]) -> Activity:
             )
         case Activity():
             return maybe_activity
+
+
+def _apply_table_style(table: Table):
+    table.style = Style(dim=True)
+    table.title_style = Style(bold=True)
+    table.min_width = 50
