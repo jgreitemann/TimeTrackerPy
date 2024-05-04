@@ -1,5 +1,6 @@
 import asyncio
 import datetime
+from itertools import groupby
 import sys
 from pathlib import Path
 from typing import Optional
@@ -92,9 +93,10 @@ def status(config: Config):
 
 
 @cli.command()
-@click.option("--today", is_flag=True)
+@click.option("-t", "--today", is_flag=True)
+@click.option("-w", "--this-week", is_flag=True)
 @click.pass_obj
-def log(config: Config, today: bool):
+def log(config: Config, today: bool, this_week: bool):
     """Print all worklog entries, grouped by activities, date, or issue."""
 
     try:
@@ -114,6 +116,17 @@ def log(config: Config, today: bool):
         table = day_table(date, day_records)
         _apply_table_style(table)
         console.print(Padding(table, pad=1))
+    elif this_week:
+        week_num = datetime.date.today().isocalendar().week
+        week_records = filter(
+            lambda r: r.stint.begin.isocalendar().week == week_num, worklog.records()
+        )
+        week_records = sorted(week_records, key=lambda r: r.stint.begin.date())
+        day_groups = groupby(week_records, key=lambda r: r.stint.begin.date())
+        for date, day_records in day_groups:
+            table = day_table(date, day_records)
+            _apply_table_style(table)
+            console.print(Padding(table, pad=1))
     else:
         for name, activity in worklog.activities.items():
             table = activity_table(name, activity)
