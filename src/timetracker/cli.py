@@ -14,7 +14,7 @@ from rich.table import Table
 
 from timetracker.api import Api, ApiError
 from timetracker.config import Config
-from timetracker.tables import activity_table, day_table
+from timetracker.tables import activity_table, day_table, month_table
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
 
@@ -95,8 +95,12 @@ def status(config: Config):
 @cli.command()
 @click.option("-t", "--today", is_flag=True)
 @click.option("-w", "--this-week", is_flag=True)
+@click.option("-m", "--this-month", is_flag=True)
+@click.option("-y", "--this-year", is_flag=True)
 @click.pass_obj
-def log(config: Config, today: bool, this_week: bool):
+def log(
+    config: Config, today: bool, this_week: bool, this_month: bool, this_year: bool
+):
     """Print all worklog entries, grouped by activities, date, or issue."""
 
     try:
@@ -129,6 +133,28 @@ def log(config: Config, today: bool, this_week: bool):
         day_groups = groupby(week_records, key=lambda r: r.stint.begin.date())
         for date, day_records in day_groups:
             table = day_table(date, list(day_records))
+            _apply_table_style(table)
+            console.print(Padding(table, pad=1))
+    elif this_month:
+        month_records = filter(
+            lambda r: r.stint.begin.year == today_date.year
+            and r.stint.begin.month == today_date.month,
+            worklog.records(),
+        )
+        table = month_table(today_date, list(month_records))
+        _apply_table_style(table)
+        console.print(Padding(table, pad=1))
+    elif this_year:
+        year_records = filter(
+            lambda r: r.stint.begin.year == today_date.year, worklog.records()
+        )
+        year_records = sorted(year_records, key=lambda r: r.stint.begin.month)
+        month_groups = groupby(year_records, key=lambda r: r.stint.begin.month)
+        for month, month_records in month_groups:
+            table = month_table(
+                datetime.date(year=today_date.year, month=month, day=1),
+                list(month_records),
+            )
             _apply_table_style(table)
             console.print(Padding(table, pad=1))
     else:
