@@ -116,6 +116,13 @@ class Activity(DataClassJsonMixin):
                 return maybe_activity
 
 
+@dataclass(frozen=True)
+class Record:
+    title: str
+    issue: str
+    stint: Stint
+
+
 @dataclass
 class Worklog(DataClassJsonMixin):
     activities: Mapping[str, Activity] = field(

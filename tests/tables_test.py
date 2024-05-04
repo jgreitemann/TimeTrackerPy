@@ -7,9 +7,9 @@ from ward import test, fixture, using
 from ward.expect import assert_equal
 import re
 
-from timetracker.tables import activity_table
+from timetracker.tables import activity_table, day_table
 
-from timetracker.worklog.data import Activity, Stint
+from timetracker.worklog.data import Activity, Record, Stint
 
 
 # "YESTERDAY" might actually be tomorrow -- if today is Jan 1.
@@ -35,6 +35,16 @@ TODAY_AFTERNOON_STINT = Stint(
 YESTERDAY_AFTERNOON_STINT = Stint(
     begin=datetime.combine(YESTERDAY, time(12, 48, 11)).astimezone(),
     end=datetime.combine(YESTERDAY, time(17, 32, 21)).astimezone(),
+)
+
+APR_1_MORNING_STINT = Stint(
+    begin=datetime.combine(APR_1_2024, time(8, 23, 12)).astimezone(),
+    end=datetime.combine(APR_1_2024, time(11, 59, 45)).astimezone(),
+)
+
+APR_1_AFTERNOON_STINT = Stint(
+    begin=datetime.combine(APR_1_2024, time(13, 3, 18)).astimezone(),
+    end=datetime.combine(APR_1_2024, time(18, 11, 33)).astimezone(),
 )
 
 
@@ -164,6 +174,83 @@ def _(tables: TablesFixture):
     tables.expected.add_row(
         "Today", TODAY_ONGOING_STINT.begin.strftime("%H:%M"), "ongoing", "5m"
     )
+
+    tables.assert_equal()
+
+
+@test("Table for a day without any stints")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = day_table(date=date(2024, 5, 2), records=[])
+
+    tables.expected.title = "Thursday, May 02, 2024"
+    tables.expected.caption = "logged 0s"
+    tables.expected.columns = [
+        Column("Activity"),
+        Column("Issue"),
+        Column("Begin"),
+        Column("End"),
+        Column("Duration"),
+    ]
+
+    tables.assert_equal()
+
+
+@test("Table for a day with two stints of different activities")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = day_table(
+        date=APR_1_2024,
+        records=[
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
+            Record(
+                title="[ME-12345] Serious work",
+                issue="TIME-8",
+                stint=APR_1_AFTERNOON_STINT,
+            ),
+        ],
+    )
+
+    tables.expected.title = "Monday, April 01, 2024"
+    tables.expected.caption = "logged 1d 0h 44m"
+    tables.expected.columns = [
+        Column("Activity"),
+        Column("Issue"),
+        Column("Begin"),
+        Column("End"),
+        Column("Duration"),
+    ]
+    tables.expected.add_row("[Fools] Prank", "TIME-69", "08:23", "11:59", "3h 36m")
+    tables.expected.add_section()
+    tables.expected.add_row(
+        "[ME-12345] Serious work", "TIME-8", "13:03", "18:11", "5h 8m"
+    )
+
+    tables.assert_equal()
+
+
+@test("Table for a day with two stints of the same activity")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = day_table(
+        date=APR_1_2024,
+        records=[
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_AFTERNOON_STINT),
+        ],
+    )
+
+    tables.expected.title = "Monday, April 01, 2024"
+    tables.expected.caption = "logged 1d 0h 44m"
+    tables.expected.columns = [
+        Column("Activity"),
+        Column("Issue"),
+        Column("Begin"),
+        Column("End"),
+        Column("Duration"),
+    ]
+    tables.expected.add_row("[Fools] Prank", "TIME-69", "08:23", "11:59", "3h 36m")
+    tables.expected.add_row("", "", "13:03", "18:11", "5h 8m")
 
     tables.assert_equal()
 
