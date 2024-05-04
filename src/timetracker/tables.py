@@ -30,8 +30,7 @@ def activity_table(name: str, activity: Activity) -> Table:
     ):
         table.add_section()
         for date_field, stint in zip_longest(repeat(date_field, 1), stints):
-            style, *stint_fields = _stint_fields(stint)
-            table.add_row(date_field, *stint_fields, style=style)
+            table.add_row(date_field, *_stint_fields(stint), style=_row_style((stint,)))
 
     return table
 
@@ -64,22 +63,17 @@ def day_table(date: datetime.date, records: Sequence[Record]) -> Table:
     for activity_fields, records in activity_groups:
         table.add_section()
         for activity_fields, record in zip_longest(repeat(activity_fields, 1), records):
-            style, *stint_fields = _stint_fields(record.stint)
             table.add_row(
                 *(activity_fields if activity_fields is not None else ("", "")),
-                *stint_fields,
-                style=style,
+                *_stint_fields(record.stint),
+                style=_row_style((record.stint,)),
             )
 
     return table
 
 
-def _stint_fields(stint: Stint) -> tuple[Style, str, str, str]:
+def _stint_fields(stint: Stint) -> tuple[str, str, str]:
     return (
-        Style(
-            color=None if stint.is_published else "yellow",
-            bold=not stint.is_finished(),
-        ),
         _short_time_str(stint.begin.time()),
         (
             "[red bold]ongoing"
@@ -90,6 +84,13 @@ def _stint_fields(stint: Stint) -> tuple[Style, str, str, str]:
             (stint if stint.is_finished() else stint.finished()).seconds(),
             aligned=True,
         ),
+    )
+
+
+def _row_style(stints: Iterable[Stint]) -> Style:
+    return Style(
+        color="yellow" if any(not stint.is_published for stint in stints) else None,
+        bold=any(not stint.is_finished() for stint in stints),
     )
 
 
