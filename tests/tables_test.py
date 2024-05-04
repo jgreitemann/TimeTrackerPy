@@ -202,12 +202,12 @@ def _(tables: TablesFixture):
     tables.actual = day_table(
         date=APR_1_2024,
         records=[
-            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
             Record(
                 title="[ME-12345] Serious work",
                 issue="TIME-8",
                 stint=APR_1_AFTERNOON_STINT,
             ),
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
         ],
     )
 

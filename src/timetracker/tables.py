@@ -56,7 +56,14 @@ def day_table(date: datetime.date, records: Iterable[Record]) -> Table:
     table.add_column("End", justify="center")
     table.add_column("Duration", justify="right")
 
-    for activity_fields, records in groupby(records, key=lambda r: (r.title, r.issue)):
+    activity_groups = (
+        (activity_fields, list(records))
+        for activity_fields, records in groupby(
+            records, key=lambda r: (r.title, r.issue)
+        )
+    )
+    activity_groups = sorted(activity_groups, key=lambda g: g[1][0].stint.begin)
+    for activity_fields, records in activity_groups:
         table.add_section()
         for activity_fields, record in zip_longest(repeat(activity_fields, 1), records):
             style, *stint_fields = _stint_fields(record.stint)
