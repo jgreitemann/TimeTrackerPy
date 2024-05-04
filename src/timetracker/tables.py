@@ -1,6 +1,6 @@
 import datetime
 from itertools import dropwhile, groupby, repeat, zip_longest
-from typing import Iterable
+from typing import Iterable, Sequence
 from rich.markup import escape
 from rich.style import Style
 from rich.table import Table
@@ -36,9 +36,7 @@ def activity_table(name: str, activity: Activity) -> Table:
     return table
 
 
-def day_table(date: datetime.date, records: Iterable[Record]) -> Table:
-    records = list(records)
-
+def day_table(date: datetime.date, records: Sequence[Record]) -> Table:
     total_seconds = sum(
         (
             record.stint if record.stint.is_finished() else record.stint.finished()

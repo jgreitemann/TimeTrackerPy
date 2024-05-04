@@ -109,22 +109,26 @@ def log(config: Config, today: bool, this_week: bool):
 
     console = Console()
 
-    if today:
-        date = datetime.date.today()
+    today_date = datetime.date.today()
 
-        day_records = filter(lambda r: r.stint.begin.date() == date, worklog.records())
-        table = day_table(date, day_records)
+    if today:
+        day_records = filter(
+            lambda r: r.stint.begin.date() == today_date, worklog.records()
+        )
+        table = day_table(today_date, list(day_records))
         _apply_table_style(table)
         console.print(Padding(table, pad=1))
     elif this_week:
-        week_num = datetime.date.today().isocalendar().week
+        week_num = today_date.isocalendar().week
         week_records = filter(
-            lambda r: r.stint.begin.isocalendar().week == week_num, worklog.records()
+            lambda r: r.stint.begin.year == today_date.year
+            and r.stint.begin.isocalendar().week == week_num,
+            worklog.records(),
         )
         week_records = sorted(week_records, key=lambda r: r.stint.begin.date())
         day_groups = groupby(week_records, key=lambda r: r.stint.begin.date())
         for date, day_records in day_groups:
-            table = day_table(date, day_records)
+            table = day_table(date, list(day_records))
             _apply_table_style(table)
             console.print(Padding(table, pad=1))
     else:
