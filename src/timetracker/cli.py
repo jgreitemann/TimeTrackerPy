@@ -1,4 +1,5 @@
 import asyncio
+import datetime
 import sys
 from pathlib import Path
 from typing import Optional
@@ -12,7 +13,7 @@ from rich.table import Table
 
 from timetracker.api import Api, ApiError
 from timetracker.config import Config
-from timetracker.tables import activity_table
+from timetracker.tables import activity_table, day_table
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
 
@@ -91,8 +92,9 @@ def status(config: Config):
 
 
 @cli.command()
+@click.option("--today", is_flag=True)
 @click.pass_obj
-def log(config: Config):
+def log(config: Config, today: bool):
     """Print all worklog entries, grouped by activities, date, or issue."""
 
     try:
@@ -105,10 +107,18 @@ def log(config: Config):
 
     console = Console()
 
-    for name, activity in worklog.activities.items():
-        table = activity_table(name, activity)
+    if today:
+        date = datetime.date.today()
+
+        day_records = filter(lambda r: r.stint.begin.date() == date, worklog.records())
+        table = day_table(date, day_records)
         _apply_table_style(table)
         console.print(Padding(table, pad=1))
+    else:
+        for name, activity in worklog.activities.items():
+            table = activity_table(name, activity)
+            _apply_table_style(table)
+            console.print(Padding(table, pad=1))
 
 
 @cli.command()

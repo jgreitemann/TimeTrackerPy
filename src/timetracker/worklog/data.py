@@ -4,6 +4,7 @@ from io import IOBase
 from typing import (
     Awaitable,
     Callable,
+    Iterable,
     Mapping,
     Optional,
     Self,
@@ -135,6 +136,12 @@ class Worklog(DataClassJsonMixin):
             f"{name}\n------------\n{activity}"
             for name, activity in self.activities.items()
         )
+
+    def records(self) -> Iterable[Record]:
+        for name, activity in self.activities.items():
+            title = f"[{name}] {activity.description}"
+            for stint in activity.stints:
+                yield Record(title, activity.issue, stint)
 
     @classmethod
     def from_stream(cls, input_stream: IOBase) -> Self:
