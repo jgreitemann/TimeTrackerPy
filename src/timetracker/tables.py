@@ -72,6 +72,56 @@ def day_table(date: datetime.date, records: Sequence[Record]) -> Table:
     return table
 
 
+def month_table(date: datetime.date, records: Sequence[Record]) -> Table:
+    total_seconds = sum(
+        (
+            record.stint if record.stint.is_finished() else record.stint.finished()
+        ).seconds()
+        for record in records
+    )
+
+    table = Table(
+        title=escape(date.strftime("%B %Y")),
+        caption=f"logged {_work_timedelta_str(total_seconds)}",
+    )
+    table.add_column("Date")
+    table.add_column("Activity")
+    table.add_column("Issue")
+    table.add_column("Duration", justify="right")
+
+    for date, date_records in groupby(
+        sorted(records, key=lambda r: r.stint.begin.date()),
+        key=lambda r: r.stint.begin.date(),
+    ):
+        table.add_section()
+        activity_groups = (
+            (activity_fields, list(activity_records))
+            for activity_fields, activity_records in groupby(
+                date_records, key=lambda r: (r.title, r.issue)
+            )
+        )
+        activity_groups = sorted(activity_groups, key=lambda g: g[1][0].stint.begin)
+        for date_field, (activity_fields, activity_records) in zip_longest(
+            repeat(_short_date_str(date), 1), activity_groups
+        ):
+            activity_seconds = sum(
+                (
+                    record.stint
+                    if record.stint.is_finished()
+                    else record.stint.finished()
+                ).seconds()
+                for record in activity_records
+            )
+            table.add_row(
+                date_field,
+                *activity_fields,
+                _work_timedelta_str(activity_seconds, aligned=True),
+                style=_row_style((r.stint for r in activity_records)),
+            )
+
+    return table
+
+
 def _stint_fields(stint: Stint) -> tuple[str, str, str]:
     return (
         _short_time_str(stint.begin.time()),

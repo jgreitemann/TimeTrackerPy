@@ -7,7 +7,7 @@ from ward import test, fixture, using
 from ward.expect import assert_equal
 import re
 
-from timetracker.tables import activity_table, day_table
+from timetracker.tables import activity_table, day_table, month_table
 
 from timetracker.worklog.data import Activity, Record, Stint
 
@@ -21,6 +21,7 @@ YESTERDAY = (
 )
 
 APR_1_2024 = date(2024, 4, 1)
+APR_2_2024 = date(2024, 4, 2)
 
 TODAY_MORNING_STINT = Stint(
     begin=datetime.combine(date.today(), time(8, 23, 12)).astimezone(),
@@ -45,6 +46,11 @@ APR_1_MORNING_STINT = Stint(
 APR_1_AFTERNOON_STINT = Stint(
     begin=datetime.combine(APR_1_2024, time(13, 3, 18)).astimezone(),
     end=datetime.combine(APR_1_2024, time(18, 11, 33)).astimezone(),
+)
+
+APR_2_AFTERNOON_STINT = Stint(
+    begin=datetime.combine(APR_2_2024, time(13, 3, 18)).astimezone(),
+    end=datetime.combine(APR_2_2024, time(18, 11, 33)).astimezone(),
 )
 
 
@@ -251,6 +257,132 @@ def _(tables: TablesFixture):
     ]
     tables.expected.add_row("[Fools] Prank", "TIME-69", "08:23", "11:59", "3h 36m")
     tables.expected.add_row("", "", "13:03", "18:11", "5h 8m")
+
+    tables.assert_equal()
+
+
+@test("Table for a month without any stints")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = month_table(date=date(2024, 4, 2), records=[])
+
+    tables.expected.title = "April 2024"
+    tables.expected.caption = "logged 0s"
+    tables.expected.columns = [
+        Column("Date"),
+        Column("Activity"),
+        Column("Issue"),
+        Column("Duration"),
+    ]
+
+    tables.assert_equal()
+
+
+@test("Table for a month with two stints of the same activity on the same day")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = month_table(
+        date=date(2024, 4, 2),
+        records=[
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_AFTERNOON_STINT),
+        ],
+    )
+
+    tables.expected.title = "April 2024"
+    tables.expected.caption = "logged 1d 0h 44m"
+    tables.expected.columns = [
+        Column("Date"),
+        Column("Activity"),
+        Column("Issue"),
+        Column("Duration"),
+    ]
+    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "1d  0h 44m")
+
+    tables.assert_equal()
+
+
+@test("Table for a month with two stints of different activities on the same day")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = month_table(
+        date=date(2024, 4, 2),
+        records=[
+            Record(
+                title="[ME-12345] Serious work",
+                issue="TIME-8",
+                stint=APR_1_AFTERNOON_STINT,
+            ),
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
+        ],
+    )
+
+    tables.expected.title = "April 2024"
+    tables.expected.caption = "logged 1d 0h 44m"
+    tables.expected.columns = [
+        Column("Date"),
+        Column("Activity"),
+        Column("Issue"),
+        Column("Duration"),
+    ]
+    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "3h 36m")
+    tables.expected.add_row("", "[ME-12345] Serious work", "TIME-8", "5h 8m")
+
+    tables.assert_equal()
+
+
+@test("Table for a month with two stints of the same activity on different days")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = month_table(
+        date=date(2024, 4, 2),
+        records=[
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_2_AFTERNOON_STINT),
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
+        ],
+    )
+
+    tables.expected.title = "April 2024"
+    tables.expected.caption = "logged 1d 0h 44m"
+    tables.expected.columns = [
+        Column("Date"),
+        Column("Activity"),
+        Column("Issue"),
+        Column("Duration"),
+    ]
+    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "3h 36m")
+    tables.expected.add_section()
+    tables.expected.add_row("Tue Apr 02", "[Fools] Prank", "TIME-69", "5h 8m")
+
+    tables.assert_equal()
+
+
+@test("Table for a month with two stints of different activities on different days")
+@using(tables=tables)
+def _(tables: TablesFixture):
+    tables.actual = month_table(
+        date=date(2024, 4, 2),
+        records=[
+            Record(
+                title="[ME-12345] Serious work",
+                issue="TIME-8",
+                stint=APR_2_AFTERNOON_STINT,
+            ),
+            Record(title="[Fools] Prank", issue="TIME-69", stint=APR_1_MORNING_STINT),
+        ],
+    )
+
+    tables.expected.title = "April 2024"
+    tables.expected.caption = "logged 1d 0h 44m"
+    tables.expected.columns = [
+        Column("Date"),
+        Column("Activity"),
+        Column("Issue"),
+        Column("Duration"),
+    ]
+    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "3h 36m")
+    tables.expected.add_section()
+    tables.expected.add_row("Tue Apr 02", "[ME-12345] Serious work", "TIME-8", "5h 8m")
 
     tables.assert_equal()
 
