@@ -63,7 +63,7 @@ class Stint(DataClassJsonMixin):
 
     def seconds(self) -> int:
         if self.end is None:
-            raise StintNotFinishedError()
+            return self.finished().seconds()
         else:
             return round((self.end - self.begin).total_seconds())
 

@@ -8,10 +8,7 @@ from timetracker.worklog.data import Activity, Record, Stint
 
 
 def activity_table(name: str, activity: Activity) -> Table:
-    total_seconds = sum(
-        (stint if stint.is_finished() else stint.finished()).seconds()
-        for stint in activity.stints
-    )
+    total_seconds = sum(stint.seconds() for stint in activity.stints)
 
     table = Table(
         title=escape(f"[{name}] {activity.description}"),
@@ -36,12 +33,7 @@ def activity_table(name: str, activity: Activity) -> Table:
 
 
 def day_table(date: datetime.date, records: Sequence[Record]) -> Table:
-    total_seconds = sum(
-        (
-            record.stint if record.stint.is_finished() else record.stint.finished()
-        ).seconds()
-        for record in records
-    )
+    total_seconds = sum(record.stint.seconds() for record in records)
 
     table = Table(
         title=escape(date.strftime("%A, %B %d, %Y")),
@@ -73,12 +65,7 @@ def day_table(date: datetime.date, records: Sequence[Record]) -> Table:
 
 
 def month_table(date: datetime.date, records: Sequence[Record]) -> Table:
-    total_seconds = sum(
-        (
-            record.stint if record.stint.is_finished() else record.stint.finished()
-        ).seconds()
-        for record in records
-    )
+    total_seconds = sum(record.stint.seconds() for record in records)
 
     table = Table(
         title=escape(date.strftime("%B %Y")),
@@ -105,12 +92,7 @@ def month_table(date: datetime.date, records: Sequence[Record]) -> Table:
             repeat(_short_date_str(date), 1), activity_groups
         ):
             activity_seconds = sum(
-                (
-                    record.stint
-                    if record.stint.is_finished()
-                    else record.stint.finished()
-                ).seconds()
-                for record in activity_records
+                record.stint.seconds() for record in activity_records
             )
             table.add_row(
                 date_field,
@@ -130,10 +112,7 @@ def _stint_fields(stint: Stint) -> tuple[str, str, str]:
             if stint.end is None
             else _short_time_str(stint.end.time())
         ),
-        _work_timedelta_str(
-            (stint if stint.is_finished() else stint.finished()).seconds(),
-            aligned=True,
-        ),
+        _work_timedelta_str(stint.seconds(), aligned=True),
     )
 
 

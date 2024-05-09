@@ -3,6 +3,7 @@ from dataclasses import replace
 from datetime import datetime
 from pathlib import Path
 from time import sleep
+from math import floor, ceil
 
 from pyfakefs.fake_filesystem import FakeFilesystem
 from timetracker.worklog.data import Activity, Stint, Worklog
@@ -56,11 +57,14 @@ def _():
 
 
 @test(
-    "Querying the number of seconds in an unfinished stint raises `StintNotFinishedError`"
+    "The number of seconds in an unfinished stint can be queried and is based on the current time"
 )
 def _():
-    with raises(StintNotFinishedError):
-        constants.UNFINISHED_STINT.seconds()
+    time_since_begin = datetime.now().astimezone() - constants.UNFINISHED_STINT.begin
+    assert constants.UNFINISHED_STINT.seconds() in range(
+        floor(time_since_begin.total_seconds()),
+        ceil(time_since_begin.total_seconds()) + 1,
+    )
 
 
 @test("An unpublished finished stint can be marked as published")
