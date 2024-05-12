@@ -1,10 +1,14 @@
 import datetime
-from itertools import dropwhile, groupby, repeat, zip_longest
+from itertools import groupby, islice, repeat, zip_longest
 from typing import Iterable, Sequence
+
 from rich.markup import escape
 from rich.style import Style
 from rich.table import Table
-from timetracker.worklog.data import Activity, Record, Stint
+
+from timetracker.time import short_date_str, short_time_str, work_timedelta_str
+from timetracker.worklog.data import Activity, ActivitySummary, Record, Stint
+from timetracker.worklog.error import ActivityAlreadyStopped, ActivityNeverStarted
 
 
 def activity_table(name: str, activity: Activity) -> Table:
@@ -13,7 +17,7 @@ def activity_table(name: str, activity: Activity) -> Table:
     table = Table(
         title=escape(f"[{name}] {activity.description}"),
         caption=escape(
-            f"logged {_work_timedelta_str(total_seconds)} on issue {activity.issue}"
+            f"logged {work_timedelta_str(total_seconds)} on issue {activity.issue}"
         ),
     )
 
@@ -23,7 +27,7 @@ def activity_table(name: str, activity: Activity) -> Table:
     table.add_column("Duration", justify="right")
 
     for date_field, stints in groupby(
-        activity.stints, key=lambda s: _short_date_str(s.begin.date())
+        activity.stints, key=lambda s: short_date_str(s.begin.date())
     ):
         table.add_section()
         for date_field, stint in zip_longest(repeat(date_field, 1), stints):
@@ -37,7 +41,7 @@ def day_table(date: datetime.date, records: Sequence[Record]) -> Table:
 
     table = Table(
         title=escape(date.strftime("%A, %B %d, %Y")),
-        caption=f"logged {_work_timedelta_str(total_seconds)}",
+        caption=f"logged {work_timedelta_str(total_seconds)}",
     )
     table.add_column("Activity")
     table.add_column("Issue")
@@ -69,7 +73,7 @@ def month_table(date: datetime.date, records: Sequence[Record]) -> Table:
 
     table = Table(
         title=escape(date.strftime("%B %Y")),
-        caption=f"logged {_work_timedelta_str(total_seconds)}",
+        caption=f"logged {work_timedelta_str(total_seconds)}",
     )
     table.add_column("Date")
     table.add_column("Activity")
@@ -89,7 +93,7 @@ def month_table(date: datetime.date, records: Sequence[Record]) -> Table:
         )
         activity_groups = sorted(activity_groups, key=lambda g: g[1][0].stint.begin)
         for date_field, (activity_fields, activity_records) in zip_longest(
-            repeat(_short_date_str(date), 1), activity_groups
+            repeat(short_date_str(date), 1), activity_groups
         ):
             activity_seconds = sum(
                 record.stint.seconds() for record in activity_records
@@ -97,22 +101,95 @@ def month_table(date: datetime.date, records: Sequence[Record]) -> Table:
             table.add_row(
                 date_field,
                 *activity_fields,
-                _work_timedelta_str(activity_seconds, aligned=True),
+                work_timedelta_str(activity_seconds, aligned=True),
                 style=_row_style((r.stint for r in activity_records)),
             )
 
     return table
 
 
+def current_stint_status_table(
+    activities: Iterable[tuple[str, Activity]], prefix: str = ""
+) -> Table:
+    table = Table.grid(expand=True, padding=1)
+    table.add_column()
+    table.add_column(style="red")
+    table.add_column(ratio=10)
+    table.add_column(style="yellow bold", justify="right")
+
+    for name, activity in activities:
+        ongoing_stint = activity.current()
+        if ongoing_stint is None:
+            raise ActivityNeverStarted()
+        if ongoing_stint.end is not None:
+            raise ActivityAlreadyStopped(ongoing_stint.end)
+
+        table.add_row(
+            prefix,
+            escape(f"[{name}]"),
+            escape(activity.description),
+            work_timedelta_str(ongoing_stint.seconds(), aligned=True),
+        )
+
+    return table
+
+
+def unpublished_activities_status_table(
+    unpublished_activities: Iterable[ActivitySummary],
+) -> Table:
+    table = Table.grid(expand=True, padding=(0, 1))
+    table.add_column()
+    table.add_column(ratio=10, no_wrap=True)
+    table.add_column(style="yellow", justify="right")
+    table.add_column()
+
+    for summary in unpublished_activities:
+        table.add_row(
+            escape(f"[{summary.name}]"),
+            escape(summary.description),
+            work_timedelta_str(summary.seconds_unpublished, aligned=True),
+            f"({summary.stints_unpublished} stints)",
+        )
+
+    return table
+
+
+def top_n_activities_status_table(
+    activities: Iterable[ActivitySummary], n: int = 3
+) -> Table:
+    table = Table.grid(expand=True, padding=(0, 1))
+    table.add_column()
+    table.add_column(ratio=10, no_wrap=True)
+    table.add_column(justify="right")
+
+    activities_iter = iter(activities)
+    for summary in islice(activities_iter, n):
+        table.add_row(
+            escape(f"[{summary.name}]"),
+            escape(summary.description),
+            work_timedelta_str(summary.seconds_total, aligned=True),
+        )
+
+    if remaining := sum(1 for _ in activities_iter):
+        if remaining == 1:
+            table.caption = "...and one more activity"
+        else:
+            table.caption = f"...and {remaining} more activities"
+        table.caption_justify = "left"
+        table.caption_style = "dim"
+
+    return table
+
+
 def _stint_fields(stint: Stint) -> tuple[str, str, str]:
     return (
-        _short_time_str(stint.begin.time()),
+        short_time_str(stint.begin.time()),
         (
             "[red bold]ongoing"
             if stint.end is None
-            else _short_time_str(stint.end.time())
+            else short_time_str(stint.end.time())
         ),
-        _work_timedelta_str(stint.seconds(), aligned=True),
+        work_timedelta_str(stint.seconds(), aligned=True),
     )
 
 
@@ -121,46 +198,3 @@ def _row_style(stints: Iterable[Stint]) -> Style:
         color="yellow" if any(not stint.is_published for stint in stints) else None,
         bold=any(not stint.is_finished() for stint in stints),
     )
-
-
-def _short_date_str(
-    date: datetime.date, relative_to: datetime.date = datetime.date.today()
-) -> str:
-    if date == relative_to:
-        return "Today"
-    elif date.year == relative_to.year:
-        return f"{date:%a %b %d}"
-    else:
-        return f"{date:%a %b %d %Y}"
-
-
-def _short_time_str(time: datetime.time) -> str:
-    return time.isoformat(timespec="minutes")
-
-
-def _work_timedelta_str(seconds: int, aligned: bool = False) -> str:
-    weeks, seconds = divmod(seconds, 144000)
-    days, seconds = divmod(seconds, 28800)
-    hours, seconds = divmod(seconds, 3600)
-    minutes, seconds = divmod(seconds, 60)
-    if aligned:
-        components = [
-            f"{weeks}w",
-            f"{days}d",
-            f"{hours:2}h",
-            f"{minutes:2}m",
-        ]
-    else:
-        components = [
-            f"{weeks}w",
-            f"{days}d",
-            f"{hours}h",
-            f"{minutes}m",
-        ]
-
-    components = list(dropwhile(lambda s: s.lstrip().startswith("0"), components))
-
-    if len(components) == 0:
-        return f"{seconds}s"
-
-    return " ".join(components)

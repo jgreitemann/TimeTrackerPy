@@ -14,7 +14,15 @@ from rich.table import Table
 
 from timetracker.api import Api, ApiError
 from timetracker.config import Config
-from timetracker.tables import activity_table, day_table, month_table
+from timetracker.tables import (
+    activity_table,
+    current_stint_status_table,
+    day_table,
+    month_table,
+    top_n_activities_status_table,
+    unpublished_activities_status_table,
+)
+from timetracker.time import work_timedelta_str
 from timetracker.worklog.data import Activity
 from timetracker.worklog.io import read_from_file, transact
 
@@ -82,14 +90,72 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
 @cli.command()
 @click.pass_obj
 def status(config: Config):
-    """Print a summary of the worklog by activity."""
+    """Print a summary of the current state of your worklog."""
     try:
         worklog = read_from_file(config.worklog_path)
-        click.echo(worklog)
     except FileNotFoundError:
         click.echo(
             "No worklog file has been created yet. Start an activity to create one."
         )
+        return None
+
+    console = Console()
+
+    match list(worklog.running_activities()):
+        case []:
+            console.print("You don't have any ongoing activities 🏖️")
+        case [(name, activity)]:
+            console.print(
+                Padding(
+                    current_stint_status_table(
+                        [(name, activity)], prefix="Current stint:"
+                    ),
+                    pad=(0, 1, 0, 0),
+                )
+            )
+        case multiple_activities:
+            console.print("[yellow bold]You have multiple ongoing activities:")
+            console.print(
+                Padding(
+                    current_stint_status_table(multiple_activities, prefix="-"),
+                    pad=(0, 1, 0, 4),
+                )
+            )
+
+    unpublished_activities = sorted(
+        filter(lambda a: a.seconds_unpublished > 0, worklog.summarize_activities()),
+        key=lambda a: a.last_worked_on,
+        reverse=True,
+    )
+
+    if len(unpublished_activities) > 0:
+        if len(unpublished_activities) > 1:
+            console.print(
+                f"\n[yellow]You have {len(unpublished_activities)} activities with unpublished stints:"
+            )
+        else:
+            console.print("\n[yellow]You have one activity with unpublished stints:")
+
+        console.print(
+            Padding(
+                unpublished_activities_status_table(unpublished_activities),
+                pad=(0, 1, 0, 4),
+            )
+        )
+
+    total_seconds = sum(a.seconds_total for a in worklog.summarize_activities())
+    all_activities = sorted(
+        worklog.summarize_activities(), key=lambda a: a.last_worked_on, reverse=True
+    )
+    console.print(
+        f"\n[dim]You have logged {work_timedelta_str(total_seconds)} in total:"
+    )
+    console.print(
+        Padding(
+            top_n_activities_status_table(all_activities),
+            pad=(0, 1, 0, 4),
+        )
+    )
 
 
 @cli.command()

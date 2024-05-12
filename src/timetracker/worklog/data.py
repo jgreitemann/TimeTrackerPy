@@ -124,12 +124,32 @@ class Record:
     stint: Stint
 
 
+@dataclass(frozen=True)
+class ActivitySummary:
+    name: str
+    description: str
+    seconds_total: int
+    seconds_unpublished: int
+    stints_unpublished: int
+    last_worked_on: datetime
+
+
 @dataclass
 class Worklog(DataClassJsonMixin):
     activities: Mapping[str, Activity] = field(
         default_factory=lambda: {},
         metadata=config(**mapping_coder(Activity)),
     )
+
+    @classmethod
+    def from_stream(cls, input_stream: IOBase) -> Self:
+        try:
+            return cls.from_json(input_stream.read())
+        except Exception as e:
+            raise WorklogDeserializationError() from e
+
+    def write_to_stream(self, output_stream: IOBase):
+        output_stream.write(self.to_json(indent=2))
 
     def __str__(self) -> str:
         return "\n\n".join(
@@ -143,15 +163,30 @@ class Worklog(DataClassJsonMixin):
             for stint in activity.stints:
                 yield Record(title, activity.issue, stint)
 
-    @classmethod
-    def from_stream(cls, input_stream: IOBase) -> Self:
-        try:
-            return cls.from_json(input_stream.read())
-        except Exception as e:
-            raise WorklogDeserializationError() from e
+    def summarize_activities(self) -> Iterable[ActivitySummary]:
+        return (
+            ActivitySummary(
+                name,
+                activity.description,
+                seconds_total=sum(s.seconds() for s in activity.stints),
+                seconds_unpublished=sum(
+                    s.seconds() for s in activity.stints if not s.is_published
+                ),
+                stints_unpublished=sum(
+                    1 for s in activity.stints if not s.is_published
+                ),
+                last_worked_on=activity.stints[-1].begin,
+            )
+            for name, activity in self.activities.items()
+            if len(activity.stints) > 0
+        )
 
-    def write_to_stream(self, output_stream: IOBase):
-        output_stream.write(self.to_json(indent=2))
+    def running_activities(self) -> Iterable[tuple[str, Activity]]:
+        return (
+            (name, activity)
+            for (name, activity) in self.activities.items()
+            if activity.is_running()
+        )
 
     def update_activity(
         self, name: str, func: Callable[[Optional[Activity]], Activity]
