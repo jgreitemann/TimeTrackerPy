@@ -25,7 +25,7 @@ from timetracker.worklog.error import (
 from timetracker.worklog.coder import mapping_coder
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, order=True)
 class Stint(DataClassJsonMixin):
     begin: datetime
     end: Optional[datetime] = None
@@ -72,6 +72,11 @@ class Activity(DataClassJsonMixin):
     description: str
     issue: str
     stints: tuple[Stint, ...] = field(default_factory=tuple)
+
+    def __post_init__(self):
+        sorted_stints = tuple(sorted(self.stints))
+        if sorted_stints != self.stints:
+            object.__setattr__(self, "stints", tuple(sorted(self.stints)))
 
     def __str__(self) -> str:
         return f"{self.description}\nIssue: {self.issue}\n" + "\n".join(

@@ -117,6 +117,23 @@ def _():
     assert new_activity == constants.NEW_ACTIVITY
 
 
+@test("Constructing an activity ensures that its stints are sorted")
+def _():
+    completed_activity = Activity(
+        description=constants.COMPLETED_ACTIVITY.description,
+        issue=constants.COMPLETED_ACTIVITY.issue,
+        stints=constants.COMPLETED_ACTIVITY.stints[::-1],
+    )
+    assert completed_activity == constants.COMPLETED_ACTIVITY
+
+    running_activity = Activity(
+        description=constants.RUNNING_ACTIVITY.description,
+        issue=constants.RUNNING_ACTIVITY.issue,
+        stints=constants.RUNNING_ACTIVITY.stints[::-1],
+    )
+    assert running_activity == constants.RUNNING_ACTIVITY
+
+
 @test("Starting an new activity produces one with an unfinished stint")
 def _():
     new_activity = deepcopy(constants.NEW_ACTIVITY)
