@@ -193,23 +193,37 @@ class Worklog(DataClassJsonMixin):
         )
 
     def update_activity(
-        self, name: str, func: Callable[[Optional[Activity]], Activity]
+        self, name: str, func: Callable[[Optional[Activity]], Optional[Activity]]
     ):
         try:
-            self.activities = {
-                **self.activities,
-                name: func(self.activities.get(name)),
-            }
+            new_activity = func(self.activities.get(name))
+            if new_activity is None:
+                self.activities = {
+                    k: v for k, v in self.activities.items() if k != name
+                }
+            else:
+                self.activities = {
+                    **self.activities,
+                    name: new_activity,
+                }
         except ActivityStateError as e:
             raise ActivityUpdateError(name) from e
 
     async def async_update_activity(
-        self, name: str, func: Callable[[Optional[Activity]], Awaitable[Activity]]
+        self,
+        name: str,
+        func: Callable[[Optional[Activity]], Awaitable[Optional[Activity]]],
     ):
         try:
-            self.activities = {
-                **self.activities,
-                name: await func(self.activities.get(name)),
-            }
+            new_activity = await func(self.activities.get(name))
+            if new_activity is None:
+                self.activities = {
+                    k: v for k, v in self.activities.items() if k != name
+                }
+            else:
+                self.activities = {
+                    **self.activities,
+                    name: new_activity,
+                }
         except ActivityStateError as e:
             raise ActivityUpdateError(name) from e

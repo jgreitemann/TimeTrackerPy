@@ -297,6 +297,16 @@ def _():
     }
 
 
+@test("Updating an existing activity with `None` deletes it from the worklog")
+def _():
+    log = deepcopy(constants.MIXED_WORKLOG)
+
+    received = []
+    log.update_activity("completed", lambda a: (received.append(a), None)[1])
+    assert received == [constants.COMPLETED_ACTIVITY]
+    assert "completed" not in log.activities
+
+
 for worklog in [Worklog(), constants.MIXED_WORKLOG]:
 
     @test(
