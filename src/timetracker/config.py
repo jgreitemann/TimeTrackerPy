@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Optional
 
 from dataclasses_json import DataClassJsonMixin
 
@@ -10,6 +11,7 @@ class Config(DataClassJsonMixin):
     host: str
     token: str
     default_group: str
+    editor: Optional[str] = None
 
     @property
     def worklog_path(self) -> Path:

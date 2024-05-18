@@ -29,6 +29,7 @@ from timetracker.worklog.io import read_from_file, transact
 ERROR = click.style("\nerror:", fg="red", bold=True)
 CAUSED_BY = click.style("  caused by:", bold=True)
 NOTE = click.style("       note:", bold=True)
+WARNING = click.style("\nwarning:", fg="yellow", bold=True)
 
 
 @click.group(
@@ -254,6 +255,35 @@ def reset(config: Config):
     """Delete the worklog."""
     if click.confirm("This will delete the worklog. Proceed?"):
         config.worklog_path.unlink()
+
+
+@cli.command()
+@click.argument("activity")
+@click.pass_obj
+def edit(config: Config, activity: str):
+    """Modify the worklog for a specific activity"""
+
+    def _edit_update(a: Optional[Activity]) -> Optional[Activity]:
+        edit_result = click.edit(str(_ensure_activity(a)), config.editor)
+        if edit_result is None:
+            click.echo(f"{WARNING} Aborted editting activity as no changes were made.")
+            return a
+
+        if edit_result.strip() == "":
+            if a is not None and click.confirm(
+                f"The activity '{activity}' will be deleted from the worklog. Proceed?"
+            ):
+                return None
+            else:
+                return a
+
+        return Activity.from_str(edit_result)
+
+    with transact(config.worklog_path) as worklog:
+        worklog.update_activity(
+            activity,
+            _edit_update,
+        )
 
 
 @cli.command()
