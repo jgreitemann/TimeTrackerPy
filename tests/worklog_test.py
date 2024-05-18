@@ -107,6 +107,14 @@ for stint in [
         deserialized_stint = Stint.from_json(json_str)
         assert deserialized_stint == stint
 
+    @test(
+        "Stints can be serialized to and deserialized from their string representation losslessly ({stint!r})"
+    )
+    def _(stint: Stint = stint):
+        serialized_str = str(stint)
+        deserialized_stint = Stint.from_str(serialized_str)
+        assert deserialized_stint == stint
+
 
 @test("A new activity is not running")
 def _():
@@ -256,6 +264,14 @@ for activity in [
     def _(activity: Activity = activity):
         json_str = activity.to_json()
         deserialized_activity = Activity.from_json(json_str)
+        assert deserialized_activity == activity
+
+    @test(
+        "Activities can be serialized to and deserialized from their string representation losslessly ({activity!r})"
+    )
+    def _(activity: Activity = activity):
+        serialized_str = str(activity)
+        deserialized_activity = Activity.from_str(serialized_str)
         assert deserialized_activity == activity
 
 

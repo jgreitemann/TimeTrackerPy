@@ -32,10 +32,28 @@ class Stint(DataClassJsonMixin):
     end: Optional[datetime] = None
     is_published: bool = False
 
+    @classmethod
+    def from_str(cls, input: str) -> Self:
+        try:
+            begin_str, end_str, *modifiers = input.strip().split()
+            modifiers = "".join(modifiers).removeprefix("(").removesuffix(")")
+            unrecognized_modifiers = list(filter(lambda m: m != "*", modifiers))
+            if len(unrecognized_modifiers) > 0:
+                raise ValueError(
+                    f"encountered unrecognized stint modifiers: {', '.join(unrecognized_modifiers)}"
+                )
+            return cls(
+                begin=datetime.fromisoformat(begin_str),
+                end=None if end_str == "now" else datetime.fromisoformat(end_str),
+                is_published="*" not in modifiers,
+            )
+        except Exception as e:
+            raise ValueError("failed to parse stint") from e
+
     def __str__(self) -> str:
         finish_format = self.end.isoformat() if self.end else "now"
         published_format = "" if self.is_published else " (*)"
-        return f"{self.begin.isoformat()} - {finish_format}{published_format}"
+        return f"{self.begin.isoformat()} {finish_format}{published_format}"
 
     def __repr__(self) -> str:
         finish_format = self.end.isoformat() if self.end else "None"
@@ -81,8 +99,29 @@ class Activity(DataClassJsonMixin):
         if not all(stint.is_finished() for stint in self.stints[:-1]):
             raise ActivityRunningIntermittentStint()
 
+    @classmethod
+    def from_str(cls, input: str) -> Optional[Self]:
+        try:
+            header, *rest = input.strip().split("\n\n", maxsplit=1)
+
+            description, issue_line = header.splitlines()
+            if not issue_line.startswith("Issue: "):
+                raise ValueError("missing 'Issue:' line")
+        except Exception as e:
+            raise ValueError("failed to parse activity header") from e
+
+        return cls(
+            description=description,
+            issue=issue_line.removeprefix("Issue: "),
+            stints=tuple(
+                Stint.from_str(s)
+                for stint_lines in rest
+                for s in stint_lines.splitlines()
+            ),
+        )
+
     def __str__(self) -> str:
-        return f"{self.description}\nIssue: {self.issue}\n" + "\n".join(
+        return f"{self.description}\nIssue: {self.issue}\n\n" + "\n".join(
             map(str, self.stints)
         )
 
