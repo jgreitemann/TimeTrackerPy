@@ -8,7 +8,6 @@ from typing import (
     Mapping,
     Optional,
     Self,
-    Sequence,
 )
 
 from dataclasses_json import DataClassJsonMixin, config
@@ -23,7 +22,7 @@ from timetracker.worklog.error import (
     StintNotFinishedError,
     WorklogDeserializationError,
 )
-from timetracker.worklog.coder import mapping_coder, seq_coder
+from timetracker.worklog.coder import mapping_coder
 
 
 @dataclass(frozen=True)
@@ -72,10 +71,7 @@ class Stint(DataClassJsonMixin):
 class Activity(DataClassJsonMixin):
     description: str
     issue: str
-    stints: Sequence[Stint] = field(
-        default_factory=lambda: [],
-        metadata=config(**seq_coder(Stint)),
-    )
+    stints: tuple[Stint, ...] = field(default_factory=tuple)
 
     def __str__(self) -> str:
         return f"{self.description}\nIssue: {self.issue}\n" + "\n".join(
@@ -93,17 +89,17 @@ class Activity(DataClassJsonMixin):
             raise ActivityAlreadyStarted(c.begin)
         return replace(
             self,
-            stints=[
+            stints=(
                 *self.stints,
                 Stint(begin=datetime.now().astimezone()),
-            ],
+            ),
         )
 
     def stopped(self) -> Self:
         if (c := self.current()) is None:
             raise ActivityNeverStarted()
         else:
-            return replace(self, stints=[*self.stints[:-1], c.finished()])
+            return replace(self, stints=(*self.stints[:-1], c.finished()))
 
     def is_running(self) -> bool:
         return (c := self.current()) is not None and not c.is_finished()

@@ -82,7 +82,7 @@ def tables():
 @using(tables=tables)
 def _(tables: TablesFixture):
     tables.actual = activity_table(
-        "MVTS-1", Activity(description="Support case", issue="TIME-13", stints=[])
+        "MVTS-1", Activity(description="Support case", issue="TIME-13", stints=())
     )
 
     tables.expected.title = "[MVTS-1] Support case"
@@ -105,10 +105,10 @@ def _(tables: TablesFixture):
         Activity(
             description="Support case",
             issue="TIME-13",
-            stints=[
+            stints=(
                 YESTERDAY_AFTERNOON_STINT,
                 TODAY_MORNING_STINT,
-            ],
+            ),
         ),
     )
 
@@ -135,7 +135,7 @@ def _(tables: TablesFixture):
         Activity(
             description="Support case",
             issue="TIME-13",
-            stints=[TODAY_MORNING_STINT, TODAY_AFTERNOON_STINT],
+            stints=(TODAY_MORNING_STINT, TODAY_AFTERNOON_STINT),
         ),
     )
 
@@ -165,7 +165,7 @@ def _(tables: TablesFixture):
         Activity(
             description="Support case",
             issue="TIME-13",
-            stints=[TODAY_ONGOING_STINT],
+            stints=(TODAY_ONGOING_STINT,),
         ),
     )
 

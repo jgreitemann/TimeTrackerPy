@@ -135,7 +135,7 @@ def _():
 @test("Restarting an activity produces one with a new unfinished stint")
 def _():
     stopped_activity = Activity(
-        description="", issue="", stints=[constants.FINISHED_STINT]
+        description="", issue="", stints=(constants.FINISHED_STINT,)
     )
     restarted_activity = stopped_activity.started()
     assert restarted_activity.is_running()
@@ -161,7 +161,7 @@ def _():
 @test("Stopping a running activity produces one with a finished stint")
 def _():
     running_activity = Activity(
-        description="", issue="", stints=[Stint(begin=constants.BREAKFAST_TIME)]
+        description="", issue="", stints=(Stint(begin=constants.BREAKFAST_TIME),)
     )
     match running_activity.stopped():
         case Activity(
