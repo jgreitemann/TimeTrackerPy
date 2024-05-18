@@ -17,6 +17,7 @@ from timetracker.worklog.error import (
     ActivityAlreadyStopped,
     ActivityNeverStarted,
     ActivityNotFound,
+    ActivityRunningIntermittentStint,
     ActivityStateError,
     ActivityUpdateError,
     StintNotFinishedError,
@@ -77,6 +78,8 @@ class Activity(DataClassJsonMixin):
         sorted_stints = tuple(sorted(self.stints))
         if sorted_stints != self.stints:
             object.__setattr__(self, "stints", tuple(sorted(self.stints)))
+        if not all(stint.is_finished() for stint in self.stints[:-1]):
+            raise ActivityRunningIntermittentStint()
 
     def __str__(self) -> str:
         return f"{self.description}\nIssue: {self.issue}\n" + "\n".join(

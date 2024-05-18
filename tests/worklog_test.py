@@ -11,6 +11,7 @@ from timetracker.worklog.error import (
     ActivityAlreadyStarted,
     ActivityAlreadyStopped,
     ActivityNeverStarted,
+    ActivityRunningIntermittentStint,
     StintNotFinishedError,
     WorklogDeserializationError,
 )
@@ -132,6 +133,45 @@ def _():
         stints=constants.RUNNING_ACTIVITY.stints[::-1],
     )
     assert running_activity == constants.RUNNING_ACTIVITY
+
+
+@test(
+    "Constructing an activity with more than one running stints raises `ActivityRunningIntermittentStint`"
+)
+def _():
+    with raises(ActivityRunningIntermittentStint):
+        Activity(
+            description=constants.RUNNING_ACTIVITY.description,
+            issue=constants.RUNNING_ACTIVITY.issue,
+            stints=(
+                *constants.RUNNING_ACTIVITY.stints,
+                Stint(begin=datetime.now().astimezone()),
+            ),
+        )
+
+
+@test(
+    "Constructing an activity where the single running stint is not the latest one raises `ActivityRunningIntermittentStint`"
+)
+def _():
+    with raises(ActivityRunningIntermittentStint):
+        Activity(
+            description=constants.RUNNING_ACTIVITY.description,
+            issue=constants.RUNNING_ACTIVITY.issue,
+            stints=(
+                Stint(begin=constants.BREAKFAST_TIME),
+                Stint(begin=constants.COFFEE_TIME, end=constants.DINNER_TIME),
+            ),
+        )
+    with raises(ActivityRunningIntermittentStint):
+        Activity(
+            description=constants.RUNNING_ACTIVITY.description,
+            issue=constants.RUNNING_ACTIVITY.issue,
+            stints=(
+                Stint(begin=constants.COFFEE_TIME, end=constants.DINNER_TIME),
+                Stint(begin=constants.BREAKFAST_TIME),
+            ),
+        )
 
 
 @test("Starting an new activity produces one with an unfinished stint")

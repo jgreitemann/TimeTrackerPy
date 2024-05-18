@@ -13,6 +13,11 @@ class ActivityStateError(Exception):
     pass
 
 
+class ActivityRunningIntermittentStint(ActivityStateError):
+    def __init__(self):
+        super().__init__("only the latest stint in an activity may be running")
+
+
 class ActivityAlreadyStarted(ActivityStateError):
     time_last_started: datetime
 
