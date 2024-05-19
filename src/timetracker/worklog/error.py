@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Iterable
 
 
 class ActivityUpdateError(Exception):
@@ -56,3 +57,12 @@ class StintNotFinishedError(Exception):
 class WorklogDeserializationError(Exception):
     def __init__(self):
         super().__init__("failed to deserialize worklog from JSON")
+
+
+class AmbiguousRunningActivity(Exception):
+    def __init__(self, running_activity_names: Iterable[str]):
+        super().__init__(
+            "ambiguous operation; more than one activity is currently running"
+        )
+        for name in running_activity_names:
+            super().add_note(f"running activity: {name}")

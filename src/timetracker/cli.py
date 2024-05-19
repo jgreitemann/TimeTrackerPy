@@ -26,6 +26,7 @@ from timetracker.tables import (
 )
 from timetracker.time import work_timedelta_str
 from timetracker.worklog.data import Activity, Worklog
+from timetracker.worklog.error import AmbiguousRunningActivity
 from timetracker.worklog.io import read_from_file, transact
 
 ERROR = click.style("\nerror:", fg="red", bold=True)
@@ -301,11 +302,22 @@ def start(config: Config, activity: str):
 
 
 @cli.command()
-@click.argument("activity", type=RunningActivityNameType())
+@click.argument("activity", type=RunningActivityNameType(), required=False)
 @click.pass_obj
-def stop(config: Config, activity: str):
+def stop(config: Config, activity: Optional[str]):
     """Stop a running activity"""
+
     with transact(config.worklog_path) as worklog:
+        if activity is None:
+            match [name for name, _ in worklog.running_activities()]:
+                case []:
+                    click.echo("No activities are currently running.")
+                    return
+                case [name]:
+                    activity = name
+                case names:
+                    raise AmbiguousRunningActivity(names)
+
         worklog.update_activity(activity, lambda a: Activity.verify(a).stopped())
 
 
