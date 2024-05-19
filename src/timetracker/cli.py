@@ -66,6 +66,8 @@ class ActivityNameType(click.ParamType):
             )
             for name, activity in activities
             if name.startswith(incomplete)
+            or activity.issue.startswith(incomplete)
+            or incomplete.lower() in activity.description.lower()
         ]
 
     def shell_complete(
