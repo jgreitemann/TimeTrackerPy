@@ -322,6 +322,28 @@ def stop(config: Config, activity: Optional[str]):
 
 
 @cli.command()
+@click.argument("activity", type=ActivityNameType())
+@click.pass_obj
+def switch(config: Config, activity: str):
+    """Stop all running activities and start another"""
+
+    with transact(config.worklog_path) as worklog:
+        running_activities = [name for name, _ in worklog.running_activities()]
+        if len(running_activities) > 1:
+            click.confirm(
+                "More than one activity is currently running. Are you sure you want to stop all of them?",
+                abort=True,
+            )
+
+        for running_activity in running_activities:
+            worklog.update_activity(
+                running_activity, lambda a: Activity.verify(a).stopped()
+            )
+
+        worklog.update_activity(activity, lambda a: _ensure_activity(a).started())
+
+
+@cli.command()
 @click.pass_obj
 def reset(config: Config):
     """Delete the worklog"""
