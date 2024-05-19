@@ -381,10 +381,11 @@ def switch(config: Config, activity: str):
 
 
 @cli.command()
+@click.option("-f", "--force", is_flag=True)
 @click.pass_obj
-def reset(config: Config):
+def reset(config: Config, force: bool):
     """Delete the worklog"""
-    if click.confirm("This will delete the worklog. Proceed?"):
+    if force or click.confirm("This will delete the worklog. Proceed?"):
         config.worklog_path.unlink()
 
 
