@@ -1,7 +1,8 @@
 import asyncio
 import datetime
-from itertools import groupby
+import subprocess
 import sys
+from itertools import groupby
 from pathlib import Path
 from typing import Optional
 
@@ -30,6 +31,10 @@ ERROR = click.style("\nerror:", fg="red", bold=True)
 CAUSED_BY = click.style("  caused by:", bold=True)
 NOTE = click.style("       note:", bold=True)
 WARNING = click.style("\nwarning:", fg="yellow", bold=True)
+
+
+def _data_dir() -> Path:
+    return Path.home() / ".local" / "share"
 
 
 @click.group(
@@ -65,7 +70,7 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
         store_dir: Path = click.prompt(
             "  → Storage directory location",
             type=Path,
-            default=Path("~/.local/share/timetracker"),
+            default=_data_dir() / "timetracker",
         ).expanduser()
 
         if not store_dir.exists() and click.confirm(
@@ -91,7 +96,7 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
 @cli.command()
 @click.pass_obj
 def status(config: Config):
-    """Print a summary of the current state of your worklog."""
+    """Print a summary of the current state of your worklog"""
     try:
         worklog = read_from_file(config.worklog_path)
     except FileNotFoundError:
@@ -168,7 +173,7 @@ def status(config: Config):
 def log(
     config: Config, today: bool, this_week: bool, this_month: bool, this_year: bool
 ):
-    """Print all worklog entries, grouped by activities, date, or issue."""
+    """Print all worklog entries, grouped by activities, date, or issue"""
 
     try:
         worklog = read_from_file(config.worklog_path)
@@ -235,7 +240,7 @@ def log(
 @click.argument("activity")
 @click.pass_obj
 def start(config: Config, activity: str):
-    """Start a new activity or resume an existing one."""
+    """Start a new activity or resume an existing one"""
     with transact(config.worklog_path) as worklog:
         worklog.update_activity(activity, lambda a: _ensure_activity(a).started())
 
@@ -244,7 +249,7 @@ def start(config: Config, activity: str):
 @click.argument("activity")
 @click.pass_obj
 def stop(config: Config, activity: str):
-    """Stop a running activity."""
+    """Stop a running activity"""
     with transact(config.worklog_path) as worklog:
         worklog.update_activity(activity, lambda a: Activity.verify(a).stopped())
 
@@ -252,7 +257,7 @@ def stop(config: Config, activity: str):
 @cli.command()
 @click.pass_obj
 def reset(config: Config):
-    """Delete the worklog."""
+    """Delete the worklog"""
     if click.confirm("This will delete the worklog. Proceed?"):
         config.worklog_path.unlink()
 
@@ -266,7 +271,7 @@ def edit(config: Config, activity: str):
     def _edit_update(a: Optional[Activity]) -> Optional[Activity]:
         edit_result = click.edit(str(_ensure_activity(a)), config.editor)
         if edit_result is None:
-            click.echo(f"{WARNING} Aborted editting activity as no changes were made.")
+            click.echo(f"{WARNING} Aborted editing activity as no changes were made.")
             return a
 
         if edit_result.strip() == "":
@@ -290,7 +295,7 @@ def edit(config: Config, activity: str):
 @click.option("--activity")
 @click.pass_obj
 def publish(config: Config, activity: Optional[str]):
-    """Submit unpublished worklog entries to JIRA."""
+    """Submit unpublished worklog entries to JIRA"""
 
     api = Api(config)
 
@@ -322,6 +327,38 @@ def cli_with_error_reporting():
     except Exception as e:
         _report_error(e)
         sys.exit(1)
+
+
+@cli.command()
+@click.option("--dir", type=Path, default=_data_dir() / "fish" / "vendor_completions.d")
+def install_completions(dir: Path):
+    """Install shell completions"""
+
+    res = subprocess.run(
+        [
+            sys.executable,
+            "-c",
+            "__import__('timetracker.cli').cli.cli(prog_name='track')",
+        ],
+        env={
+            "_TRACK_COMPLETE": "fish_source",
+        },
+        capture_output=True,
+    )
+
+    if res.returncode != 0:
+        e = RuntimeError("failed to generate shell completions")
+        e.add_note(f"Process exited with code {res.returncode}:\n{res.stderr.decode()}")
+        raise e
+
+    if not click.confirm(
+        f"Shell completions will be install in {click.format_filename(dir)}.\nProceed?"
+    ):
+        sys.exit(0)
+
+    dir.mkdir(parents=True, exist_ok=True)
+    completions_file = dir / "track.fish"
+    completions_file.write_bytes(res.stdout)
 
 
 def _report_error(e: Exception):
