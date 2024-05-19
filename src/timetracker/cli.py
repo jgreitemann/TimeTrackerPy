@@ -418,10 +418,10 @@ def install_completions(dir: Path):
         e.add_note(f"Process exited with code {res.returncode}:\n{res.stderr.decode()}")
         raise e
 
-    if not click.confirm(
-        f"Shell completions will be install in {click.format_filename(dir)}.\nProceed?"
-    ):
-        sys.exit(0)
+    click.confirm(
+        f"Shell completions will be install in {click.format_filename(dir)}.\nProceed?",
+        abort=True,
+    )
 
     dir.mkdir(parents=True, exist_ok=True)
     completions_file = dir / "track.fish"
