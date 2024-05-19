@@ -90,13 +90,7 @@ class RunningActivityNameType(ActivityNameType):
         except FileNotFoundError:
             return super().shell_complete(ctx, param, incomplete)
 
-        filtered_activities = (
-            (name, activity)
-            for name, activity in worklog.activities.items()
-            if activity.is_running()
-        )
-
-        return self._filtered_completion_items(filtered_activities, incomplete)
+        return self._filtered_completion_items(worklog.running_activities(), incomplete)
 
 
 @click.group(
