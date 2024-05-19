@@ -301,6 +301,17 @@ def start(config: Config, activity: str):
         worklog.update_activity(activity, lambda a: _ensure_activity(a).started())
 
 
+def _single_running_activity(worklog: Worklog) -> str:
+    match [name for name, _ in worklog.running_activities()]:
+        case []:
+            click.echo("No activities are currently running.")
+            sys.exit(0)
+        case [name]:
+            return name
+        case names:
+            raise AmbiguousRunningActivity(names)
+
+
 @cli.command()
 @click.argument("activity", type=RunningActivityNameType(), required=False)
 @click.pass_obj
@@ -309,16 +320,22 @@ def stop(config: Config, activity: Optional[str]):
 
     with transact(config.worklog_path) as worklog:
         if activity is None:
-            match [name for name, _ in worklog.running_activities()]:
-                case []:
-                    click.echo("No activities are currently running.")
-                    return
-                case [name]:
-                    activity = name
-                case names:
-                    raise AmbiguousRunningActivity(names)
+            activity = _single_running_activity(worklog)
 
         worklog.update_activity(activity, lambda a: Activity.verify(a).stopped())
+
+
+@cli.command()
+@click.argument("activity", type=RunningActivityNameType(), required=False)
+@click.pass_obj
+def cancel(config: Config, activity: Optional[str]):
+    """Stop an activity and do NOT save the ongoing stint"""
+
+    with transact(config.worklog_path) as worklog:
+        if activity is None:
+            activity = _single_running_activity(worklog)
+
+        worklog.update_activity(activity, lambda a: Activity.verify(a).canceled())
 
 
 @cli.command()

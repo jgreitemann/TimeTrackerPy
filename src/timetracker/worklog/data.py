@@ -148,6 +148,16 @@ class Activity(DataClassJsonMixin):
         else:
             return replace(self, stints=(*self.stints[:-1], c.finished()))
 
+    def canceled(self) -> Optional[Self]:
+        if (c := self.current()) is None:
+            raise ActivityNeverStarted()
+        elif c.end is not None:
+            raise ActivityAlreadyStopped(c.end)
+        elif len(self.stints) == 1:
+            return None
+        else:
+            return replace(self, stints=self.stints[:-1])
+
     def is_running(self) -> bool:
         return (c := self.current()) is not None and not c.is_finished()
 

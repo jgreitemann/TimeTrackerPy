@@ -252,6 +252,52 @@ def _():
     assert ex.raised.time_last_stopped == constants.COMPLETED_ACTIVITY.stints[-1].end
 
 
+@test("Canceling a running activity with only the unfinished stint produces `None`")
+def _():
+    running_activity = Activity(
+        description="", issue="", stints=(Stint(begin=constants.BREAKFAST_TIME),)
+    )
+    assert running_activity.canceled() is None
+
+    [running_stint] = running_activity.stints
+    assert not running_stint.is_finished()
+
+
+@test(
+    "Canceling a running activity with multiple stints produces one without the last stint"
+)
+def _():
+    running_activity = Activity(
+        description="",
+        issue="",
+        stints=(
+            Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
+            Stint(begin=constants.COFFEE_TIME),
+        ),
+    )
+    match running_activity.canceled():
+        case Activity(
+            stints=[
+                Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME),
+            ]
+        ):
+            pass
+        case _ as value:
+            assert False, f"{repr(value)} does not match the pattern"
+
+    assert (c := running_activity.current()) is not None and not c.is_finished()
+
+
+@test("Canceling an activity which is not running raises an exception")
+def _():
+    with raises(ActivityNeverStarted):
+        constants.NEW_ACTIVITY.canceled()
+
+    with raises(ActivityAlreadyStopped) as ex:
+        constants.COMPLETED_ACTIVITY.canceled()
+    assert ex.raised.time_last_stopped == constants.COMPLETED_ACTIVITY.stints[-1].end
+
+
 for activity in [
     constants.NEW_ACTIVITY,
     constants.RUNNING_ACTIVITY,
