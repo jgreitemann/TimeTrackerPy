@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Optional
 
 import click
+from click.shell_completion import CompletionItem
 from click_help_colors import HelpColorsGroup
 from rich.console import Console
 from rich.padding import Padding
@@ -37,6 +38,39 @@ def _data_dir() -> Path:
     return Path.home() / ".local" / "share"
 
 
+def _default_config_file() -> Path:
+    return Path.home() / ".config" / "timetracker.json"
+
+
+class ActivityNameType(click.ParamType):
+    name: str = "activity"
+
+    def shell_complete(
+        self, ctx: click.Context, param: click.Parameter, incomplete: str
+    ) -> list[CompletionItem]:
+        if (pctx := ctx.parent) is not None and pctx.params.get(
+            "config_file"
+        ) is not None:
+            config_file = pctx.params["config_file"].expanduser()
+        else:
+            config_file = _default_config_file()
+
+        try:
+            config = Config.from_json(config_file.read_bytes())
+            worklog = read_from_file(config.worklog_path)
+        except FileNotFoundError:
+            return super().shell_complete(ctx, param, incomplete)
+
+        return [
+            CompletionItem(
+                value=name,
+                help=f"{activity.description} ({activity.issue})",
+            )
+            for name, activity in worklog.activities.items()
+            if name.startswith(incomplete)
+        ]
+
+
 @click.group(
     cls=HelpColorsGroup,
     help_headers_color="yellow",
@@ -47,11 +81,10 @@ def _data_dir() -> Path:
 @click.pass_context
 def cli(ctx: click.Context, config_file: Optional[Path]):
     if config_file is None:
-        config_file = Path("~/.config/timetracker.json").expanduser()
+        config_file = _default_config_file()
 
     try:
-        with open(config_file, "r") as config_stream:
-            ctx.obj = Config.from_json(config_stream.read())
+        ctx.obj = Config.from_json(config_file.read_bytes())
     except FileNotFoundError:
         click.secho(
             f"The configuration file '{click.format_filename(config_file)}' does not exist.",
@@ -237,7 +270,7 @@ def log(
 
 
 @cli.command()
-@click.argument("activity")
+@click.argument("activity", type=ActivityNameType())
 @click.pass_obj
 def start(config: Config, activity: str):
     """Start a new activity or resume an existing one"""
@@ -246,7 +279,7 @@ def start(config: Config, activity: str):
 
 
 @cli.command()
-@click.argument("activity")
+@click.argument("activity", type=ActivityNameType())
 @click.pass_obj
 def stop(config: Config, activity: str):
     """Stop a running activity"""
@@ -263,7 +296,7 @@ def reset(config: Config):
 
 
 @cli.command()
-@click.argument("activity")
+@click.argument("activity", type=ActivityNameType())
 @click.pass_obj
 def edit(config: Config, activity: str):
     """Modify the worklog for a specific activity"""
@@ -292,7 +325,7 @@ def edit(config: Config, activity: str):
 
 
 @cli.command()
-@click.option("--activity")
+@click.option("--activity", type=ActivityNameType())
 @click.pass_obj
 def publish(config: Config, activity: Optional[str]):
     """Submit unpublished worklog entries to JIRA"""
