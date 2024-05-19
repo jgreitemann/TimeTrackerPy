@@ -34,7 +34,7 @@ NOTE = click.style("       note:", bold=True)
 WARNING = click.style("\nwarning:", fg="yellow", bold=True)
 
 
-def _data_dir() -> Path:
+def data_dir() -> Path:
     return Path.home() / ".local" / "share"
 
 
@@ -131,7 +131,7 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
         store_dir: Path = click.prompt(
             "  → Storage directory location",
             type=Path,
-            default=_data_dir() / "timetracker",
+            default=data_dir() / "timetracker",
         ).expanduser()
 
         if not store_dir.exists() and click.confirm(
@@ -391,7 +391,7 @@ def cli_with_error_reporting():
 
 
 @cli.command()
-@click.option("--dir", type=Path, default=_data_dir() / "fish" / "vendor_completions.d")
+@click.option("--dir", type=Path, default=data_dir() / "fish" / "vendor_completions.d")
 def install_completions(dir: Path):
     """Install shell completions"""
 
