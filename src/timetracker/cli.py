@@ -339,6 +339,26 @@ def cancel(config: Config, activity: Optional[str]):
 
 
 @cli.command()
+@click.option("-f", "--force", is_flag=True)
+@click.argument("activity", type=RunningActivityNameType())
+@click.pass_obj
+def remove(config: Config, force: bool, activity: str):
+    """Remove an activity from the worklog"""
+
+    def _remove_activity(a: Activity) -> None:
+        if not force and any(not stint.is_published for stint in a.stints):
+            click.confirm(
+                "The activity contains unpublished stints. Are you sure you want to remove it?",
+                abort=True,
+            )
+
+    with transact(config.worklog_path) as worklog:
+        worklog.update_activity(
+            activity, lambda a: _remove_activity(Activity.verify(a))
+        )
+
+
+@cli.command()
 @click.argument("activity", type=ActivityNameType())
 @click.pass_obj
 def switch(config: Config, activity: str):
