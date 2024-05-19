@@ -4,7 +4,7 @@ import subprocess
 import sys
 from itertools import groupby
 from pathlib import Path
-from typing import Optional
+from typing import Iterable, Optional
 
 import click
 from click.shell_completion import CompletionItem
@@ -25,7 +25,7 @@ from timetracker.tables import (
     unpublished_activities_status_table,
 )
 from timetracker.time import work_timedelta_str
-from timetracker.worklog.data import Activity
+from timetracker.worklog.data import Activity, Worklog
 from timetracker.worklog.io import read_from_file, transact
 
 ERROR = click.style("\nerror:", fg="red", bold=True)
@@ -45,9 +45,7 @@ def _default_config_file() -> Path:
 class ActivityNameType(click.ParamType):
     name: str = "activity"
 
-    def shell_complete(
-        self, ctx: click.Context, param: click.Parameter, incomplete: str
-    ) -> list[CompletionItem]:
+    def _read_worklog(self, ctx: click.Context) -> Worklog:
         if (pctx := ctx.parent) is not None and pctx.params.get(
             "config_file"
         ) is not None:
@@ -55,20 +53,48 @@ class ActivityNameType(click.ParamType):
         else:
             config_file = _default_config_file()
 
-        try:
-            config = Config.from_json(config_file.read_bytes())
-            worklog = read_from_file(config.worklog_path)
-        except FileNotFoundError:
-            return super().shell_complete(ctx, param, incomplete)
+        config = Config.from_json(config_file.read_bytes())
+        return read_from_file(config.worklog_path)
 
+    def _filtered_completion_items(
+        self, activities: Iterable[tuple[str, Activity]], incomplete: str
+    ) -> list[CompletionItem]:
         return [
             CompletionItem(
                 value=name,
                 help=f"{activity.description} ({activity.issue})",
             )
-            for name, activity in worklog.activities.items()
+            for name, activity in activities
             if name.startswith(incomplete)
         ]
+
+    def shell_complete(
+        self, ctx: click.Context, param: click.Parameter, incomplete: str
+    ) -> list[CompletionItem]:
+        try:
+            worklog = self._read_worklog(ctx)
+        except FileNotFoundError:
+            return super().shell_complete(ctx, param, incomplete)
+
+        return self._filtered_completion_items(worklog.activities.items(), incomplete)
+
+
+class RunningActivityNameType(ActivityNameType):
+    def shell_complete(
+        self, ctx: click.Context, param: click.Parameter, incomplete: str
+    ) -> list[CompletionItem]:
+        try:
+            worklog = self._read_worklog(ctx)
+        except FileNotFoundError:
+            return super().shell_complete(ctx, param, incomplete)
+
+        filtered_activities = (
+            (name, activity)
+            for name, activity in worklog.activities.items()
+            if activity.is_running()
+        )
+
+        return self._filtered_completion_items(filtered_activities, incomplete)
 
 
 @click.group(
@@ -279,7 +305,7 @@ def start(config: Config, activity: str):
 
 
 @cli.command()
-@click.argument("activity", type=ActivityNameType())
+@click.argument("activity", type=RunningActivityNameType())
 @click.pass_obj
 def stop(config: Config, activity: str):
     """Stop a running activity"""
