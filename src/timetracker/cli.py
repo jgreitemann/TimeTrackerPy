@@ -340,7 +340,7 @@ def cancel(config: Config, activity: Optional[str]):
 
 @cli.command()
 @click.option("-f", "--force", is_flag=True)
-@click.argument("activity", type=RunningActivityNameType())
+@click.argument("activity", type=ActivityNameType())
 @click.pass_obj
 def remove(config: Config, force: bool, activity: str):
     """Remove an activity from the worklog"""
