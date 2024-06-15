@@ -241,9 +241,9 @@ class Worklog(DataClassJsonMixin):
             if activity.is_running()
         )
 
-    def update_activity(
-        self, name: str, func: Callable[[Optional[Activity]], Optional[Activity]]
-    ):
+    def update_activity[
+        R: Optional[Activity]
+    ](self, name: str, func: Callable[[Optional[Activity]], R]) -> R:
         try:
             new_activity = func(self.activities.get(name))
             if new_activity is None:
@@ -255,14 +255,13 @@ class Worklog(DataClassJsonMixin):
                     **self.activities,
                     name: new_activity,
                 }
+            return new_activity
         except ActivityStateError as e:
             raise ActivityUpdateError(name) from e
 
-    async def async_update_activity(
-        self,
-        name: str,
-        func: Callable[[Optional[Activity]], Awaitable[Optional[Activity]]],
-    ):
+    async def async_update_activity[
+        R: Optional[Activity]
+    ](self, name: str, func: Callable[[Optional[Activity]], Awaitable[R]],):
         try:
             new_activity = await func(self.activities.get(name))
             if new_activity is None:
@@ -274,5 +273,6 @@ class Worklog(DataClassJsonMixin):
                     **self.activities,
                     name: new_activity,
                 }
+            return new_activity
         except ActivityStateError as e:
             raise ActivityUpdateError(name) from e

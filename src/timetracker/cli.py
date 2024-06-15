@@ -298,7 +298,10 @@ def log(
 def start(config: Config, activity: str):
     """Start a new activity or resume an existing one"""
     with transact(config.worklog_path) as worklog:
-        worklog.update_activity(activity, lambda a: _ensure_activity(a).started())
+        started = worklog.update_activity(
+            activity, lambda a: _ensure_activity(a).started()
+        )
+    click.echo(f"Starting work on [{activity}] {started.description}.")
 
 
 def _single_running_activity(worklog: Worklog) -> str:
@@ -321,8 +324,15 @@ def stop(config: Config, activity: Optional[str]):
     with transact(config.worklog_path) as worklog:
         if activity is None:
             activity = _single_running_activity(worklog)
+        stopped = worklog.update_activity(
+            activity, lambda a: Activity.verify(a).stopped()
+        )
 
-        worklog.update_activity(activity, lambda a: Activity.verify(a).stopped())
+    unpublished_secs = sum(s.seconds() for s in stopped.stints if not s.is_published)
+    click.echo(f"Finished work on [{activity}] {stopped.description}.")
+    click.echo(
+        f"{work_timedelta_str(unpublished_secs)} have been logged and can be published to {stopped.issue}."
+    )
 
 
 @cli.command()
@@ -334,8 +344,16 @@ def cancel(config: Config, activity: Optional[str]):
     with transact(config.worklog_path) as worklog:
         if activity is None:
             activity = _single_running_activity(worklog)
+        canceled = worklog.update_activity(
+            activity, lambda a: Activity.verify(a).canceled()
+        )
 
-        worklog.update_activity(activity, lambda a: Activity.verify(a).canceled())
+    if canceled is None:
+        click.echo(f"The activity {activity} has been deleted.")
+    else:
+        click.echo(
+            f"The current stint on [{activity}] {canceled.description} has been canceled and won't be published."
+        )
 
 
 @cli.command()
@@ -357,6 +375,8 @@ def remove(config: Config, force: bool, activity: str):
             activity, lambda a: _remove_activity(Activity.verify(a))
         )
 
+    click.echo(f"The activity {activity} has been deleted.")
+
 
 @cli.command()
 @click.argument("activity", type=ActivityNameType())
@@ -365,19 +385,24 @@ def switch(config: Config, activity: str):
     """Stop all running activities and start another"""
 
     with transact(config.worklog_path) as worklog:
-        running_activities = [name for name, _ in worklog.running_activities()]
+        running_activities = dict(worklog.running_activities())
         if len(running_activities) > 1:
             click.confirm(
                 "More than one activity is currently running. Are you sure you want to stop all of them?",
                 abort=True,
             )
 
-        for running_activity in running_activities:
-            worklog.update_activity(
+        for running_activity in running_activities.keys():
+            stopped = worklog.update_activity(
                 running_activity, lambda a: Activity.verify(a).stopped()
             )
+            click.echo(f"Finished work on [{running_activity}] {stopped.description}.")
 
-        worklog.update_activity(activity, lambda a: _ensure_activity(a).started())
+        started = worklog.update_activity(
+            activity, lambda a: _ensure_activity(a).started()
+        )
+
+    click.echo(f"Starting work on [{activity}] {started.description}.")
 
 
 @cli.command()

@@ -333,9 +333,10 @@ def _():
     log = deepcopy(constants.MIXED_WORKLOG)
 
     received = []
-    log.update_activity(
+    result = log.update_activity(
         "secret", lambda a: (received.append(a), constants.ALL_NIGHTER_ACTIVITY)[1]
     )
+    assert result == constants.ALL_NIGHTER_ACTIVITY
     assert received == [None]
 
     assert log.activities == {
@@ -349,9 +350,10 @@ def _():
     log = deepcopy(constants.MIXED_WORKLOG)
 
     received = []
-    log.update_activity(
+    result = log.update_activity(
         "running", lambda a: (received.append(a), constants.ALL_NIGHTER_ACTIVITY)[1]
     )
+    assert result == constants.ALL_NIGHTER_ACTIVITY
     assert received == [constants.RUNNING_ACTIVITY]
     assert log.activities == {
         **constants.MIXED_WORKLOG.activities,
@@ -364,7 +366,8 @@ def _():
     log = deepcopy(constants.MIXED_WORKLOG)
 
     received = []
-    log.update_activity("completed", lambda a: (received.append(a), None)[1])
+    result = log.update_activity("completed", lambda a: (received.append(a), None)[1])
+    assert result is None
     assert received == [constants.COMPLETED_ACTIVITY]
     assert "completed" not in log.activities
 
