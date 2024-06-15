@@ -59,6 +59,9 @@ class Stint(DataClassJsonMixin):
         finish_format = self.end.isoformat() if self.end else "None"
         return f"Stint(begin={self.begin.isoformat()}, end={finish_format}, is_published={self.is_published})"
 
+    def __contains__(self, time: datetime) -> bool:
+        return self.begin <= time and (self.end is None or time <= self.end)
+
     def is_finished(self) -> bool:
         return self.end is not None
 

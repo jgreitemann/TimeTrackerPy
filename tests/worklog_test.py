@@ -34,6 +34,36 @@ def _():
     assert Stint(begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME).is_finished()
 
 
+@test("Any time before its beginning is not contained in the stint")
+def _():
+    assert constants.BREAKFAST_TIME not in Stint(begin=constants.LUNCH_TIME)
+    assert constants.BREAKFAST_TIME not in Stint(
+        begin=constants.LUNCH_TIME, end=constants.DINNER_TIME
+    )
+
+
+@test("Any time after its beginning is contained in an unfinished stint")
+def _():
+    assert constants.LUNCH_TIME in Stint(begin=constants.BREAKFAST_TIME)
+    assert constants.DINNER_TIME in Stint(begin=constants.BREAKFAST_TIME)
+
+
+@test(
+    "Any time after its beginning and before its end is contained in a finished stint"
+)
+def _():
+    assert constants.LUNCH_TIME in Stint(
+        begin=constants.BREAKFAST_TIME, end=constants.DINNER_TIME
+    )
+
+
+@test("Any time after its end is not contained in a finished stint")
+def _():
+    assert constants.DINNER_TIME not in Stint(
+        begin=constants.BREAKFAST_TIME, end=constants.LUNCH_TIME
+    )
+
+
 @test("Finishing an unfinished stint produces a finished one")
 def _():
     assert not constants.UNFINISHED_STINT.is_finished()
