@@ -181,10 +181,25 @@ class Record:
 class ActivitySummary:
     name: str
     description: str
+    issue: str
     seconds_total: int
     seconds_unpublished: int
     stints_unpublished: int
     last_worked_on: datetime
+
+    @classmethod
+    def from_raw(cls: type[Self], name: str, activity: Activity) -> Self:
+        return cls(
+            name,
+            activity.description,
+            issue=activity.issue,
+            seconds_total=sum(s.seconds() for s in activity.stints),
+            seconds_unpublished=sum(
+                s.seconds() for s in activity.stints if not s.is_published
+            ),
+            stints_unpublished=sum(1 for s in activity.stints if not s.is_published),
+            last_worked_on=activity.stints[-1].begin,
+        )
 
 
 @dataclass
@@ -218,18 +233,7 @@ class Worklog(DataClassJsonMixin):
 
     def summarize_activities(self) -> Iterable[ActivitySummary]:
         return (
-            ActivitySummary(
-                name,
-                activity.description,
-                seconds_total=sum(s.seconds() for s in activity.stints),
-                seconds_unpublished=sum(
-                    s.seconds() for s in activity.stints if not s.is_published
-                ),
-                stints_unpublished=sum(
-                    1 for s in activity.stints if not s.is_published
-                ),
-                last_worked_on=activity.stints[-1].begin,
-            )
+            ActivitySummary.from_raw(name, activity)
             for name, activity in self.activities.items()
             if len(activity.stints) > 0
         )

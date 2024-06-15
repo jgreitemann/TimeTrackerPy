@@ -25,7 +25,7 @@ from timetracker.tables import (
     unpublished_activities_status_table,
 )
 from timetracker.time import work_timedelta_str
-from timetracker.worklog.data import Activity, Worklog
+from timetracker.worklog.data import Activity, ActivitySummary, Worklog
 from timetracker.worklog.error import AmbiguousRunningActivity
 from timetracker.worklog.io import read_from_file, transact
 
@@ -58,17 +58,22 @@ class ActivityNameType(click.ParamType):
         return read_from_file(config.worklog_path)
 
     def _filtered_completion_items(
-        self, activities: Iterable[tuple[str, Activity]], incomplete: str
+        self, activities: Iterable[ActivitySummary], incomplete: str
     ) -> list[CompletionItem]:
+        filtered = [
+            activity
+            for activity in activities
+            if incomplete.lower() in activity.name.lower()
+            or incomplete.lower() in activity.issue.lower()
+            or incomplete.lower() in activity.description.lower()
+        ]
+        filtered.sort(key=lambda a: a.last_worked_on, reverse=True)
         return [
             CompletionItem(
-                value=name,
+                value=activity.name,
                 help=f"{activity.description} ({activity.issue})",
             )
-            for name, activity in activities
-            if name.startswith(incomplete)
-            or activity.issue.startswith(incomplete)
-            or incomplete.lower() in activity.description.lower()
+            for activity in filtered
         ]
 
     def shell_complete(
@@ -79,7 +84,9 @@ class ActivityNameType(click.ParamType):
         except FileNotFoundError:
             return super().shell_complete(ctx, param, incomplete)
 
-        return self._filtered_completion_items(worklog.activities.items(), incomplete)
+        return self._filtered_completion_items(
+            worklog.summarize_activities(), incomplete
+        )
 
 
 class RunningActivityNameType(ActivityNameType):
@@ -91,7 +98,13 @@ class RunningActivityNameType(ActivityNameType):
         except FileNotFoundError:
             return super().shell_complete(ctx, param, incomplete)
 
-        return self._filtered_completion_items(worklog.running_activities(), incomplete)
+        return self._filtered_completion_items(
+            (
+                ActivitySummary.from_raw(name, activity)
+                for name, activity in worklog.running_activities()
+            ),
+            incomplete,
+        )
 
 
 @click.group(
@@ -508,9 +521,13 @@ def install_completions(dir: Path):
         abort=True,
     )
 
+    patched_completions = res.stdout.replace(
+        b"complete --no-files", b"complete --keep-order --no-files"
+    )
+
     dir.mkdir(parents=True, exist_ok=True)
     completions_file = dir / "track.fish"
-    completions_file.write_bytes(res.stdout)
+    completions_file.write_bytes(patched_completions)
 
 
 def _report_error(e: Exception):
