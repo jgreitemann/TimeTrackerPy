@@ -13,7 +13,7 @@ from timetracker.worklog.error import (
     ActivityNeverStarted,
     ActivityRunningIntermittentStint,
     StintNotFinishedError,
-    StintStartedLater,
+    ActivityStartedLater,
     WorklogDeserializationError,
 )
 from timetracker.worklog.io import read_from_file, transact
@@ -80,10 +80,10 @@ def _():
 
 
 @test(
-    "Attempting to finish a stint at any time before its beginning raises `StintStartedLater`"
+    "Attempting to finish a stint at any time before its beginning raises `ActivityStartedLater`"
 )
 def _():
-    with raises(StintStartedLater):
+    with raises(ActivityStartedLater):
         Stint(begin=constants.LUNCH_TIME).finished(end=constants.BREAKFAST_TIME)
 
 
@@ -268,6 +268,14 @@ def _():
     assert ex.raised.time_last_started == constants.RUNNING_ACTIVITY.stints[-1].begin
 
 
+@test(
+    "Starting an activity at a time before the last stint raises `ActivityRunningIntermittentStint`"
+)
+def _():
+    with raises(ActivityRunningIntermittentStint):
+        constants.NIGHT_SHIFT_ACTIVITY.started(constants.BREAKFAST_TIME)
+
+
 @test("Stopping a running activity produces one with a finished stint")
 def _():
     running_activity = Activity(
@@ -295,6 +303,13 @@ def _():
     with raises(ActivityAlreadyStopped) as ex:
         constants.COMPLETED_ACTIVITY.stopped()
     assert ex.raised.time_last_stopped == constants.COMPLETED_ACTIVITY.stints[-1].end
+
+    with raises(ActivityStartedLater) as ex:
+        constants.ALL_NIGHTER_ACTIVITY.stopped(constants.BREAKFAST_TIME)
+    assert (
+        ex.raised.time_last_started == constants.ALL_NIGHTER_ACTIVITY.stints[-1].begin
+    )
+    assert ex.raised.attempted_end == constants.BREAKFAST_TIME
 
 
 @test("Canceling a running activity with only the unfinished stint produces `None`")

@@ -21,7 +21,7 @@ from timetracker.worklog.error import (
     ActivityStateError,
     ActivityUpdateError,
     StintNotFinishedError,
-    StintStartedLater,
+    ActivityStartedLater,
     WorklogDeserializationError,
 )
 from timetracker.worklog.coder import mapping_coder
@@ -74,7 +74,7 @@ class Stint(DataClassJsonMixin):
         end = end.astimezone(end.tzinfo)
 
         if end < self.begin:
-            raise StintStartedLater(self.begin, end)
+            raise ActivityStartedLater(self.begin, end)
 
         return replace(self, end=end)
 
@@ -141,22 +141,29 @@ class Activity(DataClassJsonMixin):
         else:
             return None
 
-    def started(self) -> Self:
+    def started(self, time: datetime = datetime.now()) -> Self:
         if (c := self.current()) and not c.is_finished():
             raise ActivityAlreadyStarted(c.begin)
+
+        # ensure datetime is "aware": either keep tzinfo or presume local tz
+        time = time.astimezone(time.tzinfo)
+
         return replace(
             self,
             stints=(
                 *self.stints,
-                Stint(begin=datetime.now().astimezone()),
+                Stint(begin=time),
             ),
         )
 
-    def stopped(self) -> Self:
+    def stopped(self, time: datetime = datetime.now()) -> Self:
         if (c := self.current()) is None:
             raise ActivityNeverStarted()
-        else:
-            return replace(self, stints=(*self.stints[:-1], c.finished()))
+
+        # ensure datetime is "aware": either keep tzinfo or presume local tz
+        time = time.astimezone(time.tzinfo)
+
+        return replace(self, stints=(*self.stints[:-1], c.finished(end=time)))
 
     def canceled(self) -> Optional[Self]:
         if (c := self.current()) is None:

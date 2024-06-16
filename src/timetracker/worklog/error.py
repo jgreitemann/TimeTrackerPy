@@ -44,6 +44,18 @@ class ActivityNeverStarted(ActivityStateError):
         super().__init__("cannot stop an activity that has never been started")
 
 
+class ActivityStartedLater(Exception):
+    time_last_started: datetime
+    attempted_end: datetime
+
+    def __init__(self, time_last_started: datetime, attempted_end: datetime):
+        self.time_last_started = time_last_started
+        self.attempted_end = attempted_end
+        super().__init__(
+            f"cannot stop the activity at {attempted_end.isoformat()} because the running stint has only been started at {time_last_started.isoformat()}"
+        )
+
+
 class ActivityNotFound(Exception):
     def __init__(self):
         super().__init__("the specified activity is not on file")
@@ -52,13 +64,6 @@ class ActivityNotFound(Exception):
 class StintNotFinishedError(Exception):
     def __init__(self):
         super().__init__("cannot operate on an unfinished stint")
-
-
-class StintStartedLater(Exception):
-    def __init__(self, begin: datetime, attempted_end: datetime):
-        super().__init__(
-            f"cannot finish stint at {attempted_end.isoformat()} because it has only been started at {begin.isoformat()}"
-        )
 
 
 class WorklogDeserializationError(Exception):
