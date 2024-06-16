@@ -13,6 +13,7 @@ from timetracker.worklog.error import (
     ActivityNeverStarted,
     ActivityRunningIntermittentStint,
     StintNotFinishedError,
+    StintStartedLater,
     WorklogDeserializationError,
 )
 from timetracker.worklog.io import read_from_file, transact
@@ -70,6 +71,20 @@ def _():
     finished_stint = constants.UNFINISHED_STINT.finished()
     assert finished_stint.is_finished()
     assert finished_stint is not constants.UNFINISHED_STINT
+
+
+@test("Finishing a stint at any time after its beginning succeeds")
+def _():
+    finished_stint = constants.UNFINISHED_STINT.finished(end=constants.LUNCH_TIME)
+    assert finished_stint == constants.FINISHED_STINT
+
+
+@test(
+    "Attempting to finish a stint at any time before its beginning raises `StintStartedLater`"
+)
+def _():
+    with raises(StintStartedLater):
+        Stint(begin=constants.LUNCH_TIME).finished(end=constants.BREAKFAST_TIME)
 
 
 @test(

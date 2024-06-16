@@ -54,6 +54,13 @@ class StintNotFinishedError(Exception):
         super().__init__("cannot operate on an unfinished stint")
 
 
+class StintStartedLater(Exception):
+    def __init__(self, begin: datetime, attempted_end: datetime):
+        super().__init__(
+            f"cannot finish stint at {attempted_end.isoformat()} because it has only been started at {begin.isoformat()}"
+        )
+
+
 class WorklogDeserializationError(Exception):
     def __init__(self):
         super().__init__("failed to deserialize worklog from JSON")

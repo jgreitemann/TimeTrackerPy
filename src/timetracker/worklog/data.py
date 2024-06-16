@@ -21,6 +21,7 @@ from timetracker.worklog.error import (
     ActivityStateError,
     ActivityUpdateError,
     StintNotFinishedError,
+    StintStartedLater,
     WorklogDeserializationError,
 )
 from timetracker.worklog.coder import mapping_coder
@@ -65,11 +66,17 @@ class Stint(DataClassJsonMixin):
     def is_finished(self) -> bool:
         return self.end is not None
 
-    def finished(self) -> Self:
-        if self.end is None:
-            return replace(self, end=datetime.now().astimezone())
-        else:
+    def finished(self, *, end: datetime = datetime.now()) -> Self:
+        if self.end is not None:
             raise ActivityAlreadyStopped(self.end)
+
+        # ensure datetime is "aware": either keep tzinfo or presume local tz
+        end = end.astimezone(end.tzinfo)
+
+        if end < self.begin:
+            raise StintStartedLater(self.begin, end)
+
+        return replace(self, end=end)
 
     def published(self) -> Self:
         if self.end is None:
