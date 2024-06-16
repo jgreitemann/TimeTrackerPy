@@ -24,7 +24,7 @@ from timetracker.tables import (
     top_n_activities_status_table,
     unpublished_activities_status_table,
 )
-from timetracker.time import work_timedelta_str
+from timetracker.time import parse_datetime, short_datetime_str, work_timedelta_str
 from timetracker.worklog.data import Activity, ActivitySummary, Worklog
 from timetracker.worklog.error import AmbiguousRunningActivity
 from timetracker.worklog.io import read_from_file, transact
@@ -306,15 +306,18 @@ def log(
 
 
 @cli.command()
+@click.option("-t", "--time", type=parse_datetime, default="+0m")
 @click.argument("activity", type=ActivityNameType())
 @click.pass_obj
-def start(config: Config, activity: str):
+def start(config: Config, activity: str, time: datetime.datetime):
     """Start a new activity or resume an existing one"""
     with transact(config.worklog_path) as worklog:
         started = worklog.update_activity(
-            activity, lambda a: _ensure_activity(a).started()
+            activity, lambda a: _ensure_activity(a).started(time)
         )
-    click.echo(f"Starting work on [{activity}] {started.description}.")
+    click.echo(
+        f"Starting work on [{activity}] {started.description} at {short_datetime_str(time)}."
+    )
 
 
 def _single_running_activity(worklog: Worklog) -> str:
@@ -329,20 +332,23 @@ def _single_running_activity(worklog: Worklog) -> str:
 
 
 @cli.command()
+@click.option("-t", "--time", type=parse_datetime, default="+0m")
 @click.argument("activity", type=RunningActivityNameType(), required=False)
 @click.pass_obj
-def stop(config: Config, activity: Optional[str]):
+def stop(config: Config, activity: Optional[str], time: datetime.datetime):
     """Stop a running activity"""
 
     with transact(config.worklog_path) as worklog:
         if activity is None:
             activity = _single_running_activity(worklog)
         stopped = worklog.update_activity(
-            activity, lambda a: Activity.verify(a).stopped()
+            activity, lambda a: Activity.verify(a).stopped(time)
         )
 
     unpublished_secs = sum(s.seconds() for s in stopped.stints if not s.is_published)
-    click.echo(f"Finished work on [{activity}] {stopped.description}.")
+    click.echo(
+        f"Finished work on [{activity}] {stopped.description} at {short_datetime_str(time)}."
+    )
     click.echo(
         f"{work_timedelta_str(unpublished_secs)} have been logged and can be published to {stopped.issue}."
     )
@@ -392,9 +398,10 @@ def remove(config: Config, force: bool, activity: str):
 
 
 @cli.command()
+@click.option("-t", "--time", type=parse_datetime, default="+0m")
 @click.argument("activity", type=ActivityNameType())
 @click.pass_obj
-def switch(config: Config, activity: str):
+def switch(config: Config, activity: str, time: datetime.datetime):
     """Stop all running activities and start another"""
 
     with transact(config.worklog_path) as worklog:
@@ -407,15 +414,17 @@ def switch(config: Config, activity: str):
 
         for running_activity in running_activities.keys():
             stopped = worklog.update_activity(
-                running_activity, lambda a: Activity.verify(a).stopped()
+                running_activity, lambda a: Activity.verify(a).stopped(time)
             )
             click.echo(f"Finished work on [{running_activity}] {stopped.description}.")
 
         started = worklog.update_activity(
-            activity, lambda a: _ensure_activity(a).started()
+            activity, lambda a: _ensure_activity(a).started(time)
         )
 
-    click.echo(f"Starting work on [{activity}] {started.description}.")
+    click.echo(
+        f"Starting work on [{activity}] {started.description} at {short_datetime_str(time)}."
+    )
 
 
 @cli.command()

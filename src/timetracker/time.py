@@ -18,6 +18,16 @@ def short_time_str(time: datetime.time) -> str:
     return time.isoformat(timespec="minutes")
 
 
+def short_datetime_str(
+    time: datetime.datetime, relative_to: datetime.date = datetime.date.today()
+) -> str:
+    time = time.astimezone()
+    if time.date() == relative_to:
+        return short_time_str(time.time())
+    else:
+        return f"{short_date_str(time.date())}, {short_time_str(time.time())}"
+
+
 def work_timedelta_str(seconds: int, aligned: bool = False) -> str:
     weeks, seconds = divmod(seconds, 144000)
     days, seconds = divmod(seconds, 28800)
