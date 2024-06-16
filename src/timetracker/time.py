@@ -1,4 +1,5 @@
 import datetime
+import re
 from itertools import dropwhile
 
 
@@ -43,3 +44,34 @@ def work_timedelta_str(seconds: int, aligned: bool = False) -> str:
         return f"{seconds}s"
 
     return " ".join(components)
+
+
+def parse_datetime(
+    datetime_str: str,
+    relative_to: datetime.datetime = datetime.datetime.now().astimezone(),
+) -> datetime.datetime:
+    if m := re.match(
+        r"([+-])(?:(\d+)w\s?)?(?:(\d+)d\s?)?(?:(\d+)h\s?)?(?:(\d+)m\s?)?", datetime_str
+    ):
+
+        def unpack(x: str | None):
+            return 0 if x is None else int(x)
+
+        delta = datetime.timedelta(
+            weeks=unpack(m.group(2)),
+            days=unpack(m.group(3)),
+            hours=unpack(m.group(4)),
+            minutes=unpack(m.group(5)),
+        )
+        if m.group(1) == "-":
+            return relative_to - delta
+        else:
+            return relative_to + delta
+
+    try:
+        return datetime.datetime.fromisoformat(datetime_str)
+    except ValueError:
+        time = datetime.time.fromisoformat(datetime_str)
+        return datetime.datetime.combine(
+            relative_to.astimezone(time.tzinfo).date(), time
+        )
