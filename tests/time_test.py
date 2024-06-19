@@ -1,5 +1,5 @@
 from datetime import UTC, date, datetime, timedelta, timezone, time
-from ward import test
+from ward import raises, test
 
 from timetracker.time import parse_datetime
 
@@ -66,3 +66,15 @@ def _():
     assert parse_datetime("+1w 2d 3h 4m", NOW) - NOW == timedelta(
         weeks=1, days=2, hours=3, minutes=4
     )
+
+
+@test("Invalid strings raise `ValueError`")
+def _():
+    with raises(ValueError):
+        parse_datetime("")
+    with raises(ValueError):
+        parse_datetime("-")
+    with raises(ValueError):
+        parse_datetime("-bla")
+    with raises(ValueError):
+        parse_datetime("bla")

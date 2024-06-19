@@ -60,8 +60,11 @@ def parse_datetime(
     datetime_str: str,
     relative_to: datetime.datetime = datetime.datetime.now().astimezone(),
 ) -> datetime.datetime:
-    if m := re.match(
-        r"([+-])(?:(\d+)w\s?)?(?:(\d+)d\s?)?(?:(\d+)h\s?)?(?:(\d+)m\s?)?", datetime_str
+    if len(datetime_str) > 1 and (
+        m := re.match(
+            r"^([+-])(?:(\d+)w\s?)?(?:(\d+)d\s?)?(?:(\d+)h\s?)?(?:(\d+)m\s?)?$",
+            datetime_str,
+        )
     ):
 
         def unpack(x: str | None):
