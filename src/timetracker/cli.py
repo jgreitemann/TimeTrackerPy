@@ -107,6 +107,28 @@ class RunningActivityNameType(ActivityNameType):
         )
 
 
+class UpdateDatetimeType(click.ParamType):
+    name: str = "time or offset"
+
+    def convert(
+        self,
+        value: str | datetime.datetime,
+        param: Optional[click.Parameter],
+        ctx: Optional[click.Context],
+    ) -> datetime.datetime:
+        if isinstance(value, datetime.datetime):
+            return value
+        try:
+            return parse_datetime(value)
+        except ValueError as e:
+            self.fail(f"cannot parse update time: {e}", param, ctx)
+
+
+update_time_option = click.option(
+    "-t", "--time", type=UpdateDatetimeType(), default=lambda: datetime.datetime.now()
+)
+
+
 @click.group(
     cls=HelpColorsGroup,
     help_headers_color="yellow",
@@ -306,7 +328,7 @@ def log(
 
 
 @cli.command()
-@click.option("-t", "--time", type=parse_datetime, default="+0m")
+@update_time_option
 @click.argument("activity", type=ActivityNameType())
 @click.pass_obj
 def start(config: Config, activity: str, time: datetime.datetime):
@@ -332,7 +354,7 @@ def _single_running_activity(worklog: Worklog) -> str:
 
 
 @cli.command()
-@click.option("-t", "--time", type=parse_datetime, default="+0m")
+@update_time_option
 @click.argument("activity", type=RunningActivityNameType(), required=False)
 @click.pass_obj
 def stop(config: Config, activity: Optional[str], time: datetime.datetime):
@@ -398,7 +420,7 @@ def remove(config: Config, force: bool, activity: str):
 
 
 @cli.command()
-@click.option("-t", "--time", type=parse_datetime, default="+0m")
+@update_time_option
 @click.argument("activity", type=ActivityNameType())
 @click.pass_obj
 def switch(config: Config, activity: str, time: datetime.datetime):
