@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import replace
 import datetime
 import subprocess
 import sys
@@ -15,7 +16,7 @@ from rich.style import Style
 from rich.table import Table
 
 from timetracker.api import Api, ApiError, IssueNotFoundError
-from timetracker.config import Config
+from timetracker.config import Config, data_dir
 from timetracker.tables import (
     activity_table,
     current_stint_status_table,
@@ -35,14 +36,6 @@ NOTE = click.style("       note:", bold=True)
 WARNING = click.style("\nwarning:", fg="yellow", bold=True)
 
 
-def data_dir() -> Path:
-    return Path.home() / ".local" / "share"
-
-
-def _default_config_file() -> Path:
-    return Path.home() / ".config" / "timetracker.json"
-
-
 class ActivityNameType(click.ParamType):
     name: str = "activity"
 
@@ -52,7 +45,7 @@ class ActivityNameType(click.ParamType):
         ) is not None:
             config_file = pctx.params["config_file"].expanduser()
         else:
-            config_file = _default_config_file()
+            config_file = Config().file_path
 
         config = Config.from_json(config_file.read_bytes())
         return read_from_file(config.worklog_path)
@@ -139,10 +132,10 @@ update_time_option = click.option(
 @click.pass_context
 def cli(ctx: click.Context, config_file: Optional[Path]):
     if config_file is None:
-        config_file = _default_config_file()
+        config_file = Config().file_path
 
     try:
-        ctx.obj = Config.from_json(config_file.read_bytes())
+        ctx.obj = Config.from_file(config_file)
     except FileNotFoundError:
         click.secho(
             f"The configuration file '{click.format_filename(config_file)}' does not exist.",
@@ -158,30 +151,40 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
                 abort=True,
             )
 
-        store_dir: Path = click.prompt(
-            "  → Storage directory location",
-            type=Path,
-            default=data_dir() / "timetracker",
-        ).expanduser()
-
-        if not store_dir.exists() and click.confirm(
-            f"Directory '{click.format_filename(store_dir)}' does not exist. Create it?"
-        ):
-            store_dir.mkdir(parents=True, exist_ok=True)
-
-        config = Config(
-            store_dir=str(store_dir),
-            host=click.prompt("  → JIRA API host name"),
-            token=click.prompt("  → JIRA API personal access token"),
-            default_group=click.prompt("  → Worklog visibility group"),
-        )
-
-        config_file.parent.mkdir(exist_ok=True)
-
-        with open(config_file, "w") as config_stream:
-            ctx.obj = config
-            config_stream.write(config.to_json(indent=2))
+        ctx.obj = _reconfigure(Config(file_path=config_file))
+        ctx.obj.write_to_file()
         click.secho("✨ Configuration file has been created\n", bold=True)
+
+
+@cli.command()
+@click.pass_obj
+def reconfigure(config: Config):
+    """Update the configuration file"""
+    _reconfigure(config).write_to_file()
+    click.secho("✨ Configuration file has been updated\n", bold=True)
+
+
+def _reconfigure(config: Config) -> Config:
+    store_dir: Path = click.prompt(
+        "  → Storage directory location",
+        type=Path,
+        default=Path(config.store_dir),
+    ).expanduser()
+
+    if not store_dir.exists() and click.confirm(
+        f"Directory '{click.format_filename(store_dir)}' does not exist. Create it?"
+    ):
+        store_dir.mkdir(parents=True, exist_ok=True)
+
+    return replace(
+        config,
+        store_dir=str(store_dir),
+        host=click.prompt("  → JIRA API host name", default=config.host),
+        token=click.prompt("  → JIRA API personal access token", default=config.token),
+        default_group=click.prompt(
+            "  → Worklog visibility group", default=config.default_group
+        ),
+    )
 
 
 @cli.command()
