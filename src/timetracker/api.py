@@ -154,3 +154,15 @@ class Api:
                 raise IssueNotFoundError(key) from e
             else:
                 raise IssueGetError(key) from e
+
+    async def get_fields(self) -> Mapping[str, str]:
+        try:
+            async with httpx.AsyncClient() as client:
+                response = await client.get(
+                    f"https://{self.config.host}/rest/api/2/field",
+                    headers=self._headers(),
+                )
+                response.raise_for_status()
+                return {field["name"]: field["id"] for field in response.json()}
+        except httpx.HTTPStatusError as e:
+            raise ApiError("failed to get field info") from e

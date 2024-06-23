@@ -94,6 +94,15 @@ class FakeJira:
             },
         )
 
+    def mock_get_field(self, *, token: Optional[str] = None) -> respx.Route:
+        if token is None:
+            token = self.api.config.token
+
+        return respx.get(
+            f"https://{self.api.config.host}/rest/api/2/field",
+            headers={"Authorization": f"Bearer {token}"},
+        )
+
     def issue_response(self, *, summary: str, epic_link: Optional[str]):
         if self.api.config.epic_link_field is None:
             return httpx.Response(200, json={"fields": {"summary": summary}})
@@ -350,3 +359,28 @@ async def _(jira: FakeJira):
     assert issue.key == "ME-12345"
     assert issue.summary == "Feature"
     assert issue.epic_key is None
+
+
+@test(
+    "Given a bunch of fields, "
+    "when getting the fields with the correct access token, "
+    "then a mapping from name to id is returned"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    jira.mock_get_field().mock(
+        httpx.Response(
+            200,
+            json=[
+                {"id": "summary", "name": "Summary"},
+                {"id": "customfield_10000", "name": "Epic Link"},
+                {"id": "customfield_10001", "name": "Other field"},
+            ],
+        )
+    )
+    fields = await jira.api.get_fields()
+    assert fields == {
+        "Summary": "summary",
+        "Epic Link": "customfield_10000",
+        "Other field": "customfield_10001",
+    }

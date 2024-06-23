@@ -176,7 +176,7 @@ def _reconfigure(config: Config) -> Config:
     ):
         store_dir.mkdir(parents=True, exist_ok=True)
 
-    return replace(
+    config = replace(
         config,
         store_dir=str(store_dir),
         host=click.prompt("  → JIRA API host name", default=config.host),
@@ -185,6 +185,12 @@ def _reconfigure(config: Config) -> Config:
             "  → Worklog visibility group", default=config.default_group
         ),
     )
+
+    config = replace(
+        config, epic_link_field=asyncio.run(Api(config).get_fields()).get("Epic Link")
+    )
+
+    return config
 
 
 @cli.command()
