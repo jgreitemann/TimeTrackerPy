@@ -14,7 +14,7 @@ from rich.padding import Padding
 from rich.style import Style
 from rich.table import Table
 
-from timetracker.api import Api, ApiError
+from timetracker.api import Api, ApiError, IssueNotFoundError
 from timetracker.config import Config
 from timetracker.tables import (
     activity_table,
@@ -335,7 +335,7 @@ def start(config: Config, activity: str, time: datetime.datetime):
     """Start a new activity or resume an existing one"""
     with transact(config.worklog_path) as worklog:
         started = worklog.update_activity(
-            activity, lambda a: _ensure_activity(a).started(time)
+            activity, lambda a: _ensure_activity(activity, a, config).started(time)
         )
     click.echo(
         f"Starting work on [{activity}] {started.description} at {short_datetime_str(time)}."
@@ -441,7 +441,7 @@ def switch(config: Config, activity: str, time: datetime.datetime):
             click.echo(f"Finished work on [{running_activity}] {stopped.description}.")
 
         started = worklog.update_activity(
-            activity, lambda a: _ensure_activity(a).started(time)
+            activity, lambda a: _ensure_activity(activity, a, config).started(time)
         )
 
     click.echo(
@@ -465,7 +465,9 @@ def edit(config: Config, activity: str):
     """Modify the worklog for a specific activity"""
 
     def _edit_update(a: Optional[Activity]) -> Optional[Activity]:
-        edit_result = click.edit(str(_ensure_activity(a)), config.editor)
+        edit_result = click.edit(
+            str(_ensure_activity(activity, a, config)), config.editor
+        )
         if edit_result is None:
             click.echo(f"{WARNING} Aborted editing activity as no changes were made.")
             return a
@@ -575,15 +577,66 @@ def _report_error(e: Exception):
         report_notes(cause)
 
 
-def _ensure_activity(maybe_activity: Optional[Activity]) -> Activity:
-    match maybe_activity:
-        case None:
-            return Activity(
-                description=click.prompt("Description"),
-                issue=click.prompt("Issue"),
+def _ensure_activity(
+    name: str, maybe_activity: Optional[Activity], config: Config
+) -> Activity:
+    if maybe_activity is None:
+        return asyncio.run(_activity_wizard(name, config))
+    return maybe_activity
+
+
+async def _activity_wizard(name: str, config: Config) -> Activity:
+    api = Api(config)
+
+    async def prompt_issue() -> str:
+        issue = click.prompt("Enter the JIRA issue key to log work on", type=str)
+        try:
+            await api.get_issue(issue)
+            return issue
+        except IssueNotFoundError:
+            click.echo("There isn't a JIRA issue with that key. Please try again.")
+            return await prompt_issue()
+
+    try:
+        activity_info = await api.get_issue(name)
+        if click.confirm(
+            f"Use '{activity_info.summary}' as activity description?", default=True
+        ):
+            description = activity_info.summary
+        else:
+            description = click.edit(activity_info.summary, config.editor)
+            if description is None:
+                description = activity_info.summary
+
+        if activity_info.epic_key is None:
+            click.echo("This activity is not associated with an epic.")
+            if click.confirm(
+                f"Do you want to log work on {name} directly?", default=True
+            ):
+                issue = name
+            else:
+                issue = await prompt_issue()
+        else:
+            epic_info = await api.get_issue(activity_info.epic_key)
+            click.echo(
+                f"This activity is associated with the epic [{epic_info.key}] {epic_info.summary}."
             )
-        case Activity():
-            return maybe_activity
+            if click.confirm(
+                f"Do you want to log work on {epic_info.key}?", default=True
+            ):
+                issue = epic_info.key
+            else:
+                issue = await prompt_issue()
+
+    except IssueNotFoundError:
+        click.echo("There isn't a JIRA issue with that key.")
+        description = click.prompt("Enter a description for this activity", type=str)
+        issue = await prompt_issue()
+
+    return Activity(
+        description=description,
+        issue=issue,
+    )
 
 
 def _apply_table_style(table: Table):
