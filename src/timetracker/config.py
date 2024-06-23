@@ -11,6 +11,7 @@ class Config(DataClassJsonMixin):
     host: str
     token: str
     default_group: str
+    epic_link_field: Optional[str] = None
     editor: Optional[str] = None
 
     @property

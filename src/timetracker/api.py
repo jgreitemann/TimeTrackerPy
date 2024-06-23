@@ -1,7 +1,7 @@
 import asyncio
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from itertools import chain
-from typing import Mapping
+from typing import Mapping, Optional
 
 import httpx
 
@@ -20,6 +20,29 @@ class StintPostError(ApiError):
     def __init__(self, stint: Stint):
         super().__init__(f"failed to publish stint: {stint}")
         self.stint = stint
+
+
+class IssueGetError(ApiError):
+    key: str
+
+    def __init__(self, key: str):
+        super().__init__(f"failed to get issue info for {key}")
+        self.key = key
+
+
+class IssueNotFoundError(ApiError):
+    key: str
+
+    def __init__(self, key: str):
+        super().__init__(f"no issue exists for key {key}")
+        self.key = key
+
+
+@dataclass(frozen=True)
+class IssueInfo:
+    key: str
+    summary: str
+    epic_key: Optional[str]
 
 
 class Api:
@@ -102,3 +125,32 @@ class Api:
                 name: activity for name, activity in zip(worklog.activities, activities)
             }
             return list(chain.from_iterable(errors))
+
+    async def get_issue(self, key: str) -> IssueInfo:
+        try:
+            async with httpx.AsyncClient() as client:
+                fields = filter(None, ["summary", self.config.epic_link_field])
+
+                response = await client.get(
+                    f"https://{self.config.host}/rest/api/2/issue/{key}",
+                    headers=self._headers(),
+                    params={"fields": ",".join(fields)},
+                )
+                response.raise_for_status()
+                data = response.json()
+
+                return IssueInfo(
+                    key=key,
+                    summary=data["fields"]["summary"],
+                    epic_key=data["fields"].get(self.config.epic_link_field),
+                )
+        except httpx.HTTPStatusError as e:
+            try:
+                for msg in e.response.json()["errorMessages"]:
+                    e.add_note(msg)
+            except Exception:
+                pass
+            if e.response.status_code == 404:
+                raise IssueNotFoundError(key) from e
+            else:
+                raise IssueGetError(key) from e

@@ -1,11 +1,12 @@
 from copy import deepcopy
+from dataclasses import replace
 from typing import Optional, Sequence
 
 import httpx
 import respx
-from timetracker.api import Api, StintPostError
+from timetracker.api import Api, IssueGetError, IssueNotFoundError, StintPostError
 from timetracker.config import Config
-from ward import fixture, test, using
+from ward import fixture, raises, test, using
 
 from tests import constants
 
@@ -15,6 +16,16 @@ UNAUTHORIZED_RESPONSE = httpx.Response(
         "errorMessages": [
             "You do not have the permission to see the specified issue.",
             "Login Required",
+        ],
+        "errors": {},
+    },
+)
+
+ISSUE_NOT_FOUND_RESPONSE = httpx.Response(
+    status_code=404,
+    json={
+        "errorMessages": [
+            "Issue does not exist",
         ],
         "errors": {},
     },
@@ -31,6 +42,7 @@ class FakeJira:
                 host="jira.example.com",
                 token="deadbeef",
                 default_group="minions",
+                epic_link_field="customfield_10000",
             )
         )
 
@@ -59,6 +71,42 @@ class FakeJira:
                 "timeSpentSeconds": seconds_spent,
             },
         )
+
+    def mock_get_issue(
+        self,
+        issue: str,
+        *,
+        token: Optional[str] = None,
+    ) -> respx.Route:
+        if token is None:
+            token = self.api.config.token
+
+        return respx.get(
+            f"https://{self.api.config.host}/rest/api/2/issue/{issue}",
+            headers={"Authorization": f"Bearer {token}"},
+            params={
+                "fields": "summary"
+                + (
+                    f",{self.api.config.epic_link_field}"
+                    if self.api.config.epic_link_field
+                    else ""
+                )
+            },
+        )
+
+    def issue_response(self, *, summary: str, epic_link: Optional[str]):
+        if self.api.config.epic_link_field is None:
+            return httpx.Response(200, json={"fields": {"summary": summary}})
+        else:
+            return httpx.Response(
+                200,
+                json={
+                    "fields": {
+                        "summary": summary,
+                        self.api.config.epic_link_field: epic_link,
+                    }
+                },
+            )
 
 
 @fixture
@@ -218,3 +266,87 @@ async def _(jira: FakeJira):
             assert (
                 stint.is_published == stint.is_finished()
             ), f"discrepancy for stint #{i} of activity '{name}'"
+
+
+@test(
+    "Given an issue, "
+    "when fetching with an invalid access token, "
+    "then `IssueGetError` is raised"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    jira.mock_get_issue("ME-12345").mock(UNAUTHORIZED_RESPONSE)
+    with raises(IssueGetError) as e:
+        await jira.api.get_issue("ME-12345")
+
+    assert isinstance(e.raised.__cause__, httpx.HTTPStatusError)
+    assert e.raised.__cause__.response.status_code == 401
+    assert e.raised.__cause__.__notes__ == [
+        "You do not have the permission to see the specified issue.",
+        "Login Required",
+    ]
+
+
+@test(
+    "Given that the issue does not exist, "
+    "when fetching with the correct access token, "
+    "then `IssueNotFoundError` is raised"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    jira.mock_get_issue("ME-12345").mock(ISSUE_NOT_FOUND_RESPONSE)
+    with raises(IssueNotFoundError) as e:
+        await jira.api.get_issue("ME-12345")
+
+    assert isinstance(e.raised.__cause__, httpx.HTTPStatusError)
+    assert e.raised.__cause__.response.status_code == 404
+    assert e.raised.__cause__.__notes__ == ["Issue does not exist"]
+
+
+@test(
+    "Given an issue without an epic link, "
+    "when fetching with known epic link field, "
+    "then the summary is returned and the epic key is `None`"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    jira.mock_get_issue("ME-12345").mock(
+        jira.issue_response(summary="Feature", epic_link=None)
+    )
+    issue = await jira.api.get_issue("ME-12345")
+    assert issue.key == "ME-12345"
+    assert issue.summary == "Feature"
+    assert issue.epic_key is None
+
+
+@test(
+    "Given an issue with an epic link, "
+    "when fetching with known epic link field, "
+    "then the summary and epic key are returned"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    jira.mock_get_issue("ME-12345").mock(
+        jira.issue_response(summary="Feature", epic_link="ME-12000")
+    )
+    issue = await jira.api.get_issue("ME-12345")
+    assert issue.key == "ME-12345"
+    assert issue.summary == "Feature"
+    assert issue.epic_key == "ME-12000"
+
+
+@test(
+    "Given an issue with an epic link, "
+    "when fetching without known epic link field, "
+    "then the summary is returned and the epic key is `None`"
+)
+@using(jira=fake_jira)
+async def _(jira: FakeJira):
+    jira.api.config = replace(jira.api.config, epic_link_field=None)
+    jira.mock_get_issue("ME-12345").mock(
+        jira.issue_response(summary="Feature", epic_link="ME-12000")
+    )
+    issue = await jira.api.get_issue("ME-12345")
+    assert issue.key == "ME-12345"
+    assert issue.summary == "Feature"
+    assert issue.epic_key is None
