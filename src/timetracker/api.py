@@ -63,9 +63,18 @@ class Api:
                 headers=self._headers(),
                 json={
                     "comment": comment,
-                    "visibility": {"type": "group", "value": self.config.default_group},
                     "started": stint.begin_jira_format(),
                     "timeSpentSeconds": stint.seconds(),
+                    **(
+                        {
+                            "visibility": {
+                                "type": "group",
+                                "value": self.config.default_group,
+                            }
+                        }
+                        if self.config.default_group is not None
+                        else {}
+                    ),
                 },
             )
             response.raise_for_status()

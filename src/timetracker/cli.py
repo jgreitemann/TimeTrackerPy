@@ -181,9 +181,6 @@ def _reconfigure(config: Config) -> Config:
         store_dir=str(store_dir),
         host=click.prompt("  → JIRA API host name", default=config.host),
         token=click.prompt("  → JIRA API personal access token", default=config.token),
-        default_group=click.prompt(
-            "  → Worklog visibility group", default=config.default_group
-        ),
     )
 
     config = replace(

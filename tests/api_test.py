@@ -41,7 +41,6 @@ class FakeJira:
                 store_dir="",
                 host="jira.example.com",
                 token="deadbeef",
-                default_group="minions",
                 epic_link_field="customfield_10000",
             )
         )
@@ -66,7 +65,6 @@ class FakeJira:
             headers={"Authorization": f"Bearer {token}"},
             json={
                 "comment": comment,
-                "visibility": {"type": "group", "value": group},
                 "started": started,
                 "timeSpentSeconds": seconds_spent,
             },

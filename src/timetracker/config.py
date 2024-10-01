@@ -18,7 +18,7 @@ class Config(DataClassJsonMixin):
     store_dir: str = str(data_dir() / "timetracker")
     host: str = ""
     token: str = ""
-    default_group: str = ""
+    default_group: Optional[str] = None
     epic_link_field: Optional[str] = None
     editor: Optional[str] = None
 
