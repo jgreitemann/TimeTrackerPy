@@ -297,7 +297,7 @@ def _(tables: TablesFixture):
         Column("Issue"),
         Column("Duration"),
     ]
-    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "1d  0h 44m")
+    tables.expected.add_row("Mon Apr 01 2024", "[Fools] Prank", "TIME-69", "1d  0h 44m")
 
     tables.assert_equal()
 
@@ -325,7 +325,7 @@ def _(tables: TablesFixture):
         Column("Issue"),
         Column("Duration"),
     ]
-    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "3h 36m")
+    tables.expected.add_row("Mon Apr 01 2024", "[Fools] Prank", "TIME-69", "3h 36m")
     tables.expected.add_row("", "[ME-12345] Serious work", "TIME-8", "5h 8m")
 
     tables.assert_equal()
@@ -350,9 +350,9 @@ def _(tables: TablesFixture):
         Column("Issue"),
         Column("Duration"),
     ]
-    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "3h 36m")
+    tables.expected.add_row("Mon Apr 01 2024", "[Fools] Prank", "TIME-69", "3h 36m")
     tables.expected.add_section()
-    tables.expected.add_row("Tue Apr 02", "[Fools] Prank", "TIME-69", "5h 8m")
+    tables.expected.add_row("Tue Apr 02 2024", "[Fools] Prank", "TIME-69", "5h 8m")
 
     tables.assert_equal()
 
@@ -380,9 +380,11 @@ def _(tables: TablesFixture):
         Column("Issue"),
         Column("Duration"),
     ]
-    tables.expected.add_row("Mon Apr 01", "[Fools] Prank", "TIME-69", "3h 36m")
+    tables.expected.add_row("Mon Apr 01 2024", "[Fools] Prank", "TIME-69", "3h 36m")
     tables.expected.add_section()
-    tables.expected.add_row("Tue Apr 02", "[ME-12345] Serious work", "TIME-8", "5h 8m")
+    tables.expected.add_row(
+        "Tue Apr 02 2024", "[ME-12345] Serious work", "TIME-8", "5h 8m"
+    )
 
     tables.assert_equal()
 
