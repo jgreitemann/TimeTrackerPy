@@ -101,16 +101,14 @@ class Api:
                 errors.append(e)
                 return stint
 
-        stints = await asyncio.gather(
-            *(
-                (
-                    publish_and_aggregate_errors(stint)
-                    if not stint.is_published and stint.is_finished()
-                    else ((f := asyncio.Future()).set_result(stint) or f)
-                )
-                for stint in activity.stints
-            ),
-        )
+        stints = [
+            (
+                await publish_and_aggregate_errors(stint)
+                if not stint.is_published and stint.is_finished()
+                else stint
+            )
+            for stint in activity.stints
+        ]
         return (replace(activity, stints=stints), errors)
 
     async def publish_activity(
