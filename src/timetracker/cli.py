@@ -34,6 +34,7 @@ ERROR = click.style("\nerror:", fg="red", bold=True)
 CAUSED_BY = click.style("  caused by:", bold=True)
 NOTE = click.style("       note:", bold=True)
 WARNING = click.style("\nwarning:", fg="yellow", bold=True)
+HINT = click.style("hint:", fg="cyan", bold=True)
 
 
 class ActivityNameType(click.ParamType):
@@ -142,7 +143,7 @@ def cli(ctx: click.Context, config_file: Optional[Path]):
             fg="yellow",
             bold=True,
         )
-        if not click.confirm("Do you want to create it?"):
+        if not click.confirm("  → Do you want to create it?"):
             raise
 
         if config_file.suffix != ".json":
@@ -219,7 +220,7 @@ def status(config: Config):
         worklog = read_from_file(config.worklog_path)
     except FileNotFoundError:
         click.echo(
-            "No worklog file has been created yet. Start an activity to create one."
+            f"{HINT} No worklog file has been created yet. Start an activity to create one."
         )
         return None
 
@@ -297,7 +298,7 @@ def log(
         worklog = read_from_file(config.worklog_path)
     except FileNotFoundError:
         click.echo(
-            "No worklog file has been created yet. Start an activity to create one."
+            f"{HINT} No worklog file has been created yet. Start an activity to create one."
         )
         return None
 
@@ -621,7 +622,9 @@ async def _activity_wizard(name: str, config: Config) -> Activity:
             await api.get_issue(issue)
             return issue
         except IssueNotFoundError:
-            click.echo("There isn't a JIRA issue with that key. Please try again.")
+            click.echo(
+                f"{WARNING} There isn't a JIRA issue with that key. Please try again."
+            )
             return await prompt_issue()
 
     try:
@@ -656,7 +659,7 @@ async def _activity_wizard(name: str, config: Config) -> Activity:
                 issue = await prompt_issue()
 
     except IssueNotFoundError:
-        click.echo("There isn't a JIRA issue with that key.")
+        click.echo(f"{WARNING} There isn't a JIRA issue with that key.")
         description = click.prompt("Enter a description for this activity", type=str)
         issue = await prompt_issue()
 
