@@ -183,9 +183,25 @@ def _reconfigure(config: Config) -> Config:
         token=click.prompt("  → JIRA API personal access token", default=config.token),
     )
 
-    config = replace(
-        config, epic_link_field=asyncio.run(Api(config).get_fields()).get("Epic Link")
-    )
+    EPIC_LINK_FIELD_NAME = "Epic Link"
+    click.echo(" ⏳ Fetching epic link field... ", nl=False)
+    epic_link_field = asyncio.run(Api(config).get_fields()).get(EPIC_LINK_FIELD_NAME)
+    if epic_link_field is not None:
+        click.echo(f"\r ✅ Epic link field: {epic_link_field}")
+    else:
+        click.echo(
+            f"\r ❌ Server does not provide a field named '{EPIC_LINK_FIELD_NAME}'"
+        )
+
+    if epic_link_field is not None and not click.confirm(
+        "  → Do you prefer logging work on the epic associated with a ticket?",
+        default=True,
+    ):
+        epic_link_field = None
+
+    config = replace(config, epic_link_field=epic_link_field)
+
+    click.echo()
 
     return config
 
