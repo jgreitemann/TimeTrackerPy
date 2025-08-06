@@ -639,7 +639,8 @@ async def _activity_wizard(name: str, config: Config) -> Activity:
                 description = activity_info.summary
 
         if activity_info.epic_key is None:
-            click.echo("This activity is not associated with an epic.")
+            if config.epic_link_field is not None:
+                click.echo("This activity is not associated with an epic.")
             if click.confirm(
                 f"Do you want to log work on {name} directly?", default=True
             ):
