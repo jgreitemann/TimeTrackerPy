@@ -180,7 +180,12 @@ def _reconfigure(config: Config) -> Config:
         config,
         store_dir=str(store_dir),
         host=click.prompt("  → JIRA API host name", default=config.host),
-        token=click.prompt("  → JIRA API personal access token", default=config.token),
+        token=click.prompt(
+            "  → JIRA API personal access token",
+            default=config.token,
+            show_default=False,
+            hide_input=True,
+        ),
     )
 
     EPIC_LINK_FIELD_NAME = "Epic Link"
