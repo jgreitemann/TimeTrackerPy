@@ -193,7 +193,7 @@ def _reconfigure(config: Config) -> Config:
     click.echo(" ⏳ Fetching epic link field... ", nl=False)
     epic_link_field = asyncio.run(Api(config).get_fields()).get(EPIC_LINK_FIELD_NAME)
     if epic_link_field is not None:
-        click.echo(f"\r ✅ Epic link field: {epic_link_field}")
+        click.echo(f"\r ✅ Epic link field: {_styled_activity(epic_link_field)}")
     else:
         click.echo(
             f"\r ❌ Server does not provide a field named '{EPIC_LINK_FIELD_NAME}'"
@@ -233,7 +233,7 @@ def status(config: Config):
             console.print(
                 Padding(
                     current_stint_status_table(
-                        [(name, activity)], prefix="Current stint:"
+                        [(name, activity)], prefix="Working on:"
                     ),
                     pad=(0, 1, 0, 0),
                 )
@@ -366,7 +366,7 @@ def start(config: Config, activity: str, time: datetime.datetime):
             activity, lambda a: _ensure_activity(activity, a, config).started(time)
         )
     click.echo(
-        f"Starting work on [{activity}] {started.description} at {short_datetime_str(time)}."
+        f"Starting work on {_styled_activity(activity)}: {_styled_description(started.description)} at {short_datetime_str(time)}."
     )
 
 
@@ -397,10 +397,10 @@ def stop(config: Config, activity: Optional[str], time: datetime.datetime):
 
     unpublished_secs = sum(s.seconds() for s in stopped.stints if not s.is_published)
     click.echo(
-        f"Finished work on [{activity}] {stopped.description} at {short_datetime_str(time)}."
+        f"Finished work on {_styled_activity(activity)}: {_styled_description(stopped.description)} at {short_datetime_str(time)}."
     )
     click.echo(
-        f"{work_timedelta_str(unpublished_secs)} have been logged and can be published to {stopped.issue}."
+        f"{work_timedelta_str(unpublished_secs)} have been logged and can be published to {_styled_activity(stopped.issue)}."
     )
 
 
@@ -418,10 +418,10 @@ def cancel(config: Config, activity: Optional[str]):
         )
 
     if canceled is None:
-        click.echo(f"The activity {activity} has been deleted.")
+        click.echo(f"The activity {_styled_activity(activity)} has been deleted.")
     else:
         click.echo(
-            f"The current stint on [{activity}] {canceled.description} has been canceled and won't be published."
+            f"The current stint on {_styled_activity(activity)}: {_styled_description(canceled.description)} has been canceled and won't be published."
         )
 
 
@@ -444,7 +444,7 @@ def remove(config: Config, force: bool, activity: str):
             activity, lambda a: _remove_activity(Activity.verify(a))
         )
 
-    click.echo(f"The activity {activity} has been deleted.")
+    click.echo(f"The activity {_styled_activity(activity)} has been deleted.")
 
 
 @cli.command()
@@ -466,14 +466,16 @@ def switch(config: Config, activity: str, time: datetime.datetime):
             stopped = worklog.update_activity(
                 running_activity, lambda a: Activity.verify(a).stopped(time)
             )
-            click.echo(f"Finished work on [{running_activity}] {stopped.description}.")
+            click.echo(
+                f"Finished work on {_styled_activity(running_activity)}: {_styled_description(stopped.description)}."
+            )
 
         started = worklog.update_activity(
             activity, lambda a: _ensure_activity(activity, a, config).started(time)
         )
 
     click.echo(
-        f"Starting work on [{activity}] {started.description} at {short_datetime_str(time)}."
+        f"Starting work on {_styled_activity(activity)}: {_styled_description(started.description)} at {short_datetime_str(time)}."
     )
 
 
@@ -502,7 +504,7 @@ def edit(config: Config, activity: str):
 
         if edit_result.strip() == "":
             if a is not None and click.confirm(
-                f"The activity '{activity}' will be deleted from the worklog. Proceed?"
+                f"The activity {_styled_activity(activity)} will be deleted from the worklog. Proceed?"
             ):
                 return None
             else:
@@ -630,7 +632,8 @@ async def _activity_wizard(name: str, config: Config) -> Activity:
     try:
         activity_info = await api.get_issue(name)
         if click.confirm(
-            f"Use '{activity_info.summary}' as activity description?", default=True
+            f"Use '{_styled_description(activity_info.summary)}' as activity description?",
+            default=True,
         ):
             description = activity_info.summary
         else:
@@ -642,7 +645,8 @@ async def _activity_wizard(name: str, config: Config) -> Activity:
             if config.epic_link_field is not None:
                 click.echo("This activity is not associated with an epic.")
             if click.confirm(
-                f"Do you want to log work on {name} directly?", default=True
+                f"Do you want to log work on {_styled_activity(name)} directly?",
+                default=True,
             ):
                 issue = name
             else:
@@ -650,10 +654,11 @@ async def _activity_wizard(name: str, config: Config) -> Activity:
         else:
             epic_info = await api.get_issue(activity_info.epic_key)
             click.echo(
-                f"This activity is associated with the epic [{epic_info.key}] {epic_info.summary}."
+                f"This activity is associated with the epic {_styled_activity(epic_info.key)}: {_styled_description(epic_info.summary)}."
             )
             if click.confirm(
-                f"Do you want to log work on {epic_info.key}?", default=True
+                f"Do you want to log work on {_styled_description(epic_info.key)}?",
+                default=True,
             ):
                 issue = epic_info.key
             else:
@@ -674,3 +679,11 @@ def _apply_table_style(table: Table):
     table.style = Style(dim=True)
     table.title_style = Style(bold=True)
     table.min_width = 50
+
+
+def _styled_activity(activity: str) -> str:
+    return click.style(activity, bold=True)
+
+
+def _styled_description(description: str) -> str:
+    return click.style(description, italic=True)

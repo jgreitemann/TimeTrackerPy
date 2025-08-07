@@ -113,8 +113,8 @@ def current_stint_status_table(
 ) -> Table:
     table = Table.grid(expand=True, padding=1)
     table.add_column()
-    table.add_column(style="red")
-    table.add_column(ratio=10)
+    table.add_column(style="red bold")
+    table.add_column(style="italic", ratio=10)
     table.add_column(style="yellow bold", justify="right")
 
     for name, activity in activities:
