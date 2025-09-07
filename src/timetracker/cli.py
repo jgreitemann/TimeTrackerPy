@@ -380,6 +380,21 @@ def log(
 def start(config: Config, activity: str, time: datetime.datetime):
     """Start a new activity or resume an existing one"""
     with transact(config.worklog_path) as worklog:
+        running_activities = [key for (key, _) in worklog.running_activities()]
+        match running_activities:
+            case []:
+                pass
+            case [running_activity]:
+                click.confirm(
+                    f"The activity {_styled_activity(running_activity)} is still running. Are you sure you want to start {_styled_activity(activity)} in parallel?",
+                    abort=True,
+                )
+            case running_activities:
+                click.confirm(
+                    f"The activities {", ".join(_styled_activity(running_activity) for running_activity in running_activities)} are still running. Are you sure you want to start {_styled_activity(activity)} in parallel?",
+                    abort=True,
+                )
+
         started = worklog.update_activity(
             activity, lambda a: _ensure_activity(activity, a, config).started(time)
         )
