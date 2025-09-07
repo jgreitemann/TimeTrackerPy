@@ -213,6 +213,24 @@ def _reconfigure(config: Config) -> Config:
 
 
 @cli.command()
+@click.option("-a", "--activity", is_flag=True, help="Print the ongoing activity keys")
+@click.pass_obj
+def prompt(config: Config, activity: bool):
+    """Print individual pieces of information for use in a shell prompt."""
+    try:
+        worklog = read_from_file(config.worklog_path)
+    except FileNotFoundError:
+        return None
+
+    if activity:
+        match [key for (key, _) in worklog.running_activities()]:
+            case []:
+                return None
+            case activities:
+                print(", ".join(activities), end=None)
+
+
+@cli.command()
 @click.pass_obj
 def status(config: Config):
     """Print a summary of the current state of your worklog"""
